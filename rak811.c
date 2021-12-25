@@ -205,6 +205,77 @@ void rak811_puts (char * data) {
     #endif 
 }
 
+void rak811_put_bin (char * data, int length) {
+    #ifdef TRACE
+      printf("> rak811_put_bin\n");
+    #endif 
+    char tx_buffer [TX_BUFFER_SIZE];
+    char data_hex [1000]; // each ascii char will take 2 hex
+    char response [RX_BUFFER_SIZE];
+    char * response_ptr;
+    uint8_t chars_rx =0;
+    
+    rak811_set_mode(LORA_SEND);
+    
+    //data2hexString(data, data_hex, length);
+    
+    //string2hexString(data, data_hex);
+    
+    sprintf(tx_buffer, SEND_P2P, data, "\r\n");
+    
+    printf("...about to send:\n");
+    
+    #ifdef DEBUG 
+      printf("...about to send: %s\n", tx_buffer);
+    #endif  
+    
+    uart_puts(UART_ID, tx_buffer);  
+    
+    #ifdef DEBUG 
+      printf("...about to wait");
+    #endif 
+    
+    busy_wait_us(RAK811_SEND_WAIT);  
+    
+    #ifdef DEBUG 
+      printf("   ...waaaiiittt over\n");
+    #endif
+    
+    // read back the OK from the modem - this is just discarded
+	
+    response_ptr = response;
+    
+    while (uart_is_readable(UART_ID)) {
+        *response_ptr = uart_getc(UART_ID);
+        //sleep_ms(10);
+        *response_ptr++;
+        chars_rx++;
+        if (chars_rx >= RX_BUFFER_SIZE){
+            printf("...ERROR: Input buffer overload\n");
+            assert(chars_rx >= RX_BUFFER_SIZE);
+            break;
+        }
+    }
+    
+    *(response_ptr + 1) = 0; //terminate the string
+    
+    
+    if (0) {
+        rak811_reset();
+    }    
+    
+    #ifdef DEBUG
+       printf("... response from RAK811: %s\n", response);
+    #endif
+    
+    rak811_set_mode(LORA_RECEIVE);
+     
+    #ifdef TRACE
+      printf("< rak811_gets\n");
+    #endif 
+}
+
+
 void rak811_reset() {
     #ifdef TRACE
       printf("> rak811_reset\n");
@@ -311,6 +382,23 @@ void rak811_format_recvd (char * data) {
     #endif
 }
 
+void data2hexString(char * data, char * output, int length) {
+    // User beware - no string overrun checks
+    int x;
+    
+    for (x = 0; x < (length); x++)  
+        //itoa( (int) data[x],output+(x*2),16);
+        
+        sprintf(output+(x*2),"%02x",data[x]); 
+    
+    printf("%u",x);
+    *(output+((x*2)+1)) = 0; //terminate the string    
+        
+    printf("> data2hexString\n");
+//  strcpy(output, "ABCDEF0A");
+    return;
+}
+    
 //function to convert ascii char[] to hex-string (char[])
 void string2hexString(char * input, char * output) {
     

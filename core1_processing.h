@@ -1,5 +1,6 @@
 #include "types.h"
 #include "hardware/timer.h"
+#include "bme280.h" 
 
 void core1_process (void);
 void setup_arrays();
@@ -9,6 +10,7 @@ float get_wind_direction();
 int get_sector (uint16_t adc);
 uint64_t get_time(void);
 static inline uint64_t raw_time_64(void);
+bool repeating_timer_callback_1s(struct repeating_timer *t); //every second
 
 extern volatile float rainHour[60];  
 extern volatile float rainToday;

@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <time.h>
 
 #include "pico/stdlib.h"
 #include "hardware/rtc.h"
@@ -30,21 +31,25 @@
 #include "hardware/adc.h"
 #include "pico/unique_id.h"  
 #include "pico/multicore.h"
+#include "hardware/timer.h"
 
 #include "constants.h"
 #include "types.h"
 #include "openaws.h"
 
-#include "bme280.h"     // Code for handling the PTU sensor
+//#include "bme280.h"     // Code for handling the PTU sensor
 #include "formatCSV.h" // Code for handling CSV input and output
+#include "formatmessages.h" // new code for handling binary data transfers
+                           // will supercede formatCSV 
 #include "uart_lora.h" // Code for IO / initialisation of the UART
 #include "rak811.h"    // The LORA modem unit
 
 #include "core1_processing.h"
+#include "utilities.h"
  
 
-#define DEBUG
-#define TRACE
+//#define DEBUG
+//#define TRACE
 //#undef  DEBUG
 //#undef TRACE
 
@@ -127,23 +132,27 @@ int main(void) {
 
 // ====================== Zero-fill arrays Start RTC ===================    
       
-    stdio_init_all();
-    
+    #if defined TRACE || defined DEBUG
+        stdio_init_all();
+    #endif
       
     #if defined TRACE
       sleep_ms(10000); // give time to start serial terminal
       printf("> main()\n"); 
     #endif  
+    
+    // Briefly flash the boot led to show we are starting OK
+    setup_led(BOOT_LED);
+    led_on(BOOT_LED);
+    busy_wait_us_32(BOOT_LED_FLASH);
+    led_off(BOOT_LED);
+    
+    setup_led(CORE0_LED);
           
     set_real_time_clock();    
     setup_arrays();
     
     setup_station_data(); // HardwareID 
-    
-    if (!bme280_initialise()) {
-        printf("Error: failed to initialise BME280\n");
-        assert(true); 
-    }
     
     open_uart();
     #ifdef DEBUG
@@ -151,10 +160,23 @@ int main(void) {
     #endif  
     multicore_launch_core1 (core1_process); // handles all the sensors
                                             // consider a delay/ack here
-    //launch_core1();                                     
+   
+/* ============= set up the 0 seconds alarm ================ =======
+* When the RTC hits 0s the various reporting states are checked
+*/
     
-    setup_led(CORE0_LED);
-        
+    datetime_t minute_alarm = {
+        .year = -1, 
+        .month = -1,
+        .day = -1,
+        .dotw = -1,
+        .hour = -1,
+        .min = -1,
+        .sec = 0 };
+                                        
+    rtc_enable_alarm();
+    rtc_set_alarm (&minute_alarm,&minute_processing); 
+    
 // =========================== tight loop  ==============================
      
     while (1) {      
@@ -227,40 +249,6 @@ int main(void) {
                  process_RX_message(RX_buffer_copy);
             }
         }
-        
-        /*========================== Reporting ========================
-         * At whole minutes we send out the already collected readings 
-         * In future we could make reporting frequency a variable
-         */ 
-            
-        rtc_get_datetime(&current_time);
-        
-            
-        
-        if (current_time.sec == 0 ) {
-            //#ifdef DEBUG
-            //  int x = current_time.min % REPORTING_FREQUENCY;
-            //  printf("current_time.min: %d\n",current_time.min);
-            //  printf("mod result: %d\n",x);
-            //#endif
-            if ((current_time.min == 0) || (current_time.min % REPORTING_FREQUENCY) == 0) {
-                #ifdef TRACE
-                    printf("...time to report\n");
-                #endif  
-            
-                report_weather(humidity, pressure, temperature);
-             
-                // =============midnight processing=======================
-                if (current_time.hour == 0 && 
-                    current_time.min == 0 ) {
-                    #ifdef TRACE 
-                        printf("...in the midnight hour..\n");
-                    #endif
-                    midnight_reset(); 
-                     
-                } // midnight processing
-            } // time to report
-        } // zero seconds
     } // tight loop
 } // main
 
@@ -268,6 +256,37 @@ int main(void) {
 
 
 // ========================== report weather routines ==================
+
+
+
+void minute_processing (void) {
+    #ifdef TRACE
+      printf("> minute processing\n");
+    #endif
+    datetime_t current_time;
+    
+    rtc_get_datetime(&current_time);
+    
+    if ((current_time.min == 0) || (current_time.min % REPORTING_FREQUENCY) == 0) {
+        #ifdef TRACE
+            printf("...time to report\n");
+        #endif  
+    
+        report_weather(humidity, pressure, temperature);
+     
+        // =============midnight processing=======================
+        
+        if (current_time.hour == 0 && 
+            current_time.min == 0 ) {
+            #ifdef TRACE 
+                printf("...in the midnight hour..\n");
+            #endif
+            midnight_reset(); 
+             
+        } 
+    }
+    
+}
 
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature) {
     #ifdef TRACE
@@ -344,9 +363,6 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature) {
      * 
     */
     
-    bme280_fetch (&humidity, &pressure, &temperature);  
-    decimal_temperature = temperature/100; // no idea why this was returned as int
-    
     mslp = adjust_pressure(pressure, stationdata.altitude, decimal_temperature);
     
     
@@ -365,23 +381,21 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature) {
       printf("... current wind direction : %.2f\n", radians_to_degrees(current_wind.direction));
     #endif 
     
-    csv_format100 (stationdata.hardwareID, report_time, 
-                    stationdata.timezone, buffer, 200, 
-                    temperature,    // int32_t airT
-                    humidity,    // int32_t  rH
-                    pressure, // int32_t  airP
-                    mslp, // float
-                    radians_to_degrees(current_wind.direction),     
-                    current_wind.speed, // float windSp
-                    max_gust.speed,    // float maxGust
-                    max_gust.direction,     // uint maxGustD
-                    radians_to_degrees(averages2m.direction), // float wind2mDir
-                    averages2m.speed,    // float wind2mSp
-                    gust10max.speed,   // float wind10mGust
-                    radians_to_degrees(gust10max.direction),    // uint wind10mGustD
-                    rainToday,   // float  
-                    rain_1h,   // float rain_1h
-                    rainSinceLast ); //float
+    weatherReport sm;
+    
+    sm = format_weather_report ( temperature,
+                                 humidity,
+                                 pressure, 
+                                 mslp, 
+                                 current_wind,
+                                 max_gust,
+                                 averages2m,
+                                 gust10max, 
+                                 rainToday,
+                                 rain_1h,
+                                 rainSinceLast);
+                                 
+					 // next station message to rak11 format
                     
     rainSinceLast = 0; // rain since last report (deprecated)                
     
@@ -394,8 +408,9 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature) {
      * otherwise just push the data to the UART
      * */
     
+           
     #ifdef RAK811
-      rak811_puts(buffer);
+      rak811_put_bin((char*) &sm,sizeof(weatherReport)); // treat the structure as bytes
     #else  
       uart_puts(UART_ID, buffer);
     #endif
@@ -483,17 +498,7 @@ wind calc_average_wind(volatile const wind readings[], uint entries) {
      return averages;
  }
  
- float radians_to_degrees (float radians) {
-     #ifdef TRACE
-      printf("> radians_to_degrees\n");
-    #endif
-    
-    return (radians * (180 / PI));
-   
-    #ifdef TRACE
-      printf("< radians_to_degrees\n");
-    #endif    
-} 
+ 
 
 void midnight_reset (void) {
     #ifdef TRACE
@@ -577,14 +582,20 @@ void setup_station_data() {
     // ==================== board ID first =========================//
     pico_unique_board_id_t board_id;
     
-    char * p = stationdata.hardwareID;
+    char * p = stationdata.hardwareID; // The hex string version 
           
     pico_get_unique_board_id(&board_id);
+    
+    memcpy(&stationdata.boardID, 
+           &board_id, PICO_UNIQUE_BOARD_ID_SIZE_BYTES);
+    
+    //stationdata.boardID = board_id; // This is the binary version
+    
     for (int x = 0; x < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; x++) {
         sprintf(p,"%02x", board_id.id[x]);
         p = p+2; // above wrote 2 chars
       }
-      *p = '\0'; // temninate the string
+      *p = '\0'; // terminate the string
           
     #ifdef DEBUG
       //printf("...unique identifier:");
@@ -596,7 +607,7 @@ void setup_station_data() {
       printf("... station id: %s\n", stationdata.hardwareID);
     #endif 
     
-    sprintf(stationdata.timezone,"%s", "Z");
+    stationdata.timezone = 0; 
     
     
     stationdata.altitude = 181; // for testing!

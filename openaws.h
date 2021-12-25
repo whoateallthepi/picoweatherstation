@@ -25,4 +25,7 @@ void setup_led(uint led);
 void led_on(uint led);
 void led_off(uint led);
 
+void minute_processing (void);
+    
+
 #endif

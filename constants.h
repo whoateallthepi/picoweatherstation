@@ -20,7 +20,9 @@
 #define PARITY    UART_PARITY_NONE
 
 #define CORE0_LED 14
-#define CORE1_LED 20
+#define CORE1_LED 13
+#define BOOT_LED 15
+#define BOOT_LED_FLASH 1000000 // How long to flash the boot LED
 #define LED_FLASH 1000 // how brief is the flash 1million = 1s
 #define LED_INTERVAL 5000000 // every 5 seconds
 
@@ -34,7 +36,7 @@
 #define RAIN_CLICK 0.2794 // one click of the rain guage is .2794mm 
 
 #define STATION_NAME_LENGTH 31
-#define WINDCLICK 2.4 // 1 click = 2.4km/h
+#define WINDCLICK 2.4 // 1 click per second = 2.4km/h
 #define DELIM ";"
 
 #define REPORTING_FREQUENCY 5 // in minutes
@@ -47,5 +49,12 @@
 #define DEFAULT_HH 23
 #define DEFAULT_MM 54
 #define DEFAULT_SS 50
+
+#define CORE1_SLEEP_CYCLE 60000 // In milliseconds. Also frequency of 
+								// pressure/temp/humidity readings
+								// which get done each cycle
+
+
+#define DEFAULT_DECIMAL_PLACES 2
 
 #endif

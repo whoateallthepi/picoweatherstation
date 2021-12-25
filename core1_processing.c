@@ -6,6 +6,8 @@
 #include "constants.h"
 #include "core1_processing.h"
 #include "hardware/adc.h"
+#include <time.h>
+
 //#include "bme280.h"  
 #include "types.h"
 
@@ -20,9 +22,16 @@ volatile int windClicks = 0;
 uint64_t lastSecond = 0;
 uint64_t lastWindCheck = 0;
 uint64_t lastWindIRQ = 0; // Used for primitive debouncing
+uint64_t windIRQinterval = 0; //The time between the last 2 clicks'
 uint64_t lastRainIRQ = 0; // Used for primitive debouncing
 
+//The following index the wind/rain arrays used in the interrupts
 char minutes = 0;  // index for minute array rain data (used in IRQs)
+char seconds_2m = 0; // These two are indexes to the arrays
+char seconds = 0; 
+char minutes_10m = 0;
+
+struct repeating_timer timer1s;
 
 /* ================= Note on timers ================================
  * Getting the processor time the usual was time_us_64() during the 
@@ -50,19 +59,14 @@ char minutes = 0;  // index for minute array rain data (used in IRQs)
 void core1_process (void) {
 	//printf("hello from core1_process()\n");
     
-	uint64_t now;
-	char seconds_2m = 0; // These two are indexes to the arrays
-    char seconds = 0; 
-	
-	char minutes_10m = 0;
-    
+ 
     //#if defined TRACE || defined DEBUG
     //  stdio_init_all();
     //  sleep_ms(10000); // give time to start serial terminal
     //  printf("> core1_processing()\n"); 
     //#endif  
-	
-	// Initialise pins and GPIO
+    
+    // Initialise pins and GPIO
 	gpio_pull_up(WIND_IRQ);
     gpio_pull_up(RAIN_IRQ);
     
@@ -79,79 +83,83 @@ void core1_process (void) {
 	// The ADC for wind direction
     adc_init();
     adc_gpio_init(WIND_DIR_GP); // makes sure no pullups etc
-    adc_select_input(WIND_DIR);                                   
-                                       
-    // The BME280 pressure/humity/temperature sensor
+    adc_select_input(WIND_DIR);     
     
-    /*if (!bme280_initialise()) {
+    // Pressure, temp and humidity sensor
+    
+    if (!bme280_initialise()) {
         printf("Error: failed to initialise BME280\n");
         assert(true); 
-    } */
+    }   
     
-    /* =========================== main process loop ==================
+    bme280_fetch (&humidity, &pressure, &temperature);                            
+                                       
+    /* ======================== kick off the 1s timer =====================
+     * negative value = time from start of interrupt to start of next 
+     * interrupt
      */
      
-    while(1) {
-		
-		if (time_us_64() - lastSecond >= 1000000) {
+     add_repeating_timer_ms(-1000, repeating_timer_callback_1s, NULL, &timer1s); 
+     
+     while (1) {
+         // We can't read the bme280 during the 1s timer as the 
+         // library code contains sleeps and you can't sleep during an
+         // interrupt - who knew? So do it whenever we wake up
+         //
+         bme280_fetch (&humidity, &pressure, &temperature); 
+          #ifdef DEBUG
+            printf("Humidity = %.2f%%\n", humidity / 1024.0);
+            printf("Pressure = %dPa\n", pressure);
+            printf("Mslp: %.2f mB\n", mslp);
+            printf("Temp. = %.2fC\n", temperature / 100.0);
+        #endif 
+        sleep_ms(CORE1_SLEEP_CYCLE);
+     }
+ }
+
+bool repeating_timer_callback_1s(struct repeating_timer *t) {
+    
+    #ifdef DEBUG
+       printf("...second processing\n");
+     #endif            
             
-            #ifdef DEBUG
-              printf("...second processing\n");
-            #endif            
+     // wind - keep 120 readings each second for 2 mins 
             
-            lastSecond += 1000000; // microseconds = 1s
-            
-            // wind - keep 120 readings each second for 2 mins 
-            
-            // Increment the array counters, roll back to zero if needed
-            if (++seconds_2m > 119) seconds_2m = 0;
-            
-            get_wind_readings();
-            
-            windspeed[seconds_2m].speed = current_wind.speed;
-            windspeed[seconds_2m].direction = current_wind.direction;
-            
-            // check the gust for the minute
-            if (current_wind.speed > gust10m[minutes_10m].speed) {
-                gust10m[minutes_10m].speed = current_wind.speed;
-                gust10m[minutes_10m].direction = current_wind.direction;
-            }
-            // check if this is the fastest gust for the day
-            if (current_wind.speed > max_gust.speed) {
-                max_gust.speed = current_wind.speed;
-                max_gust.direction = current_wind.direction;
-            }
-            
-            // Read the BME280 every 10 seconds 
-            
-            /*if ((seconds % 10) == 0) {
-				bme280_fetch (&humidity, &pressure, &temperature);  
-				
-				#ifdef DEBUG
-                  printf("Humidity = %.2f%%\n", humidity / 1024.0);
-                  printf("Pressure = %dPa\n", pressure);
-                  printf("Temp. = %.2fC\n", temperature / 100.0);
-                #endif
-			}*/
-            
-            /* Rain: Minute totals for an hour
-             * Wind Gusts - 10 minutes worth of max gust in minute
-             */
-            
-            if (++seconds > 59) {
-                seconds = 0;
-                if (++minutes > 59) minutes = 0;
-                if (++minutes_10m > 9) minutes_10m = 0;
-                
-                // This is a new minute - reset the rain click total
-                rainHour[minutes] = 0;
-                
-                gust10m[minutes_10m].speed = 0.0; // and wind gusts
-                gust10m[minutes_10m].direction = 0; //
-            }
-		} // End every second processing
-	} // End main loop 
+    // Increment the array counters, roll back to zero if needed
+    if (++seconds_2m > 119) seconds_2m = 0;
+    
+    get_wind_readings();
+    
+    windspeed[seconds_2m].speed = current_wind.speed;
+    windspeed[seconds_2m].direction = current_wind.direction;
+    
+    // check the gust for the minute
+    if (current_wind.speed > gust10m[minutes_10m].speed) {
+        gust10m[minutes_10m].speed = current_wind.speed;
+        gust10m[minutes_10m].direction = current_wind.direction;
+    }
+    // check if this is the fastest gust for the day
+    if (current_wind.speed > max_gust.speed) {
+        max_gust.speed = current_wind.speed;
+        max_gust.direction = current_wind.direction;
+    }
+    
+    if (++seconds > 59) {
+        seconds = 0;
+        if (++minutes > 59) minutes = 0;
+        if (++minutes_10m > 9) minutes_10m = 0;
+        
+        // This is a new minute - reset the rain click total
+        rainHour[minutes] = 0;
+        
+        gust10m[minutes_10m].speed = 0.0; // and wind gusts
+        gust10m[minutes_10m].direction = 0; //
+        
+        
+    }
+    return true;
 }
+
 void gpio_callback(uint gpio, uint32_t events) {
     // handles ALL the GPIO interrupts
      
@@ -204,12 +212,14 @@ void get_wind_readings () {
     #ifdef TRACE
       printf("> get_wind_readings(core1)\n");
     #endif 
-    
+    /* The deltaTime calc is no longer needed as we are now calling this 
+     * via a timer every second
+     * 
     float deltaTime;
     uint64_t deltaTime_micros;
     uint64_t now;
     
-    now = time_us_64();
+    now = raw_time_64();
     
     deltaTime_micros = now - lastWindCheck;
     
@@ -220,17 +230,30 @@ void get_wind_readings () {
     deltaTime = deltaTime_micros / 1000000.0; // in seconds 
     
     // WINDCLICK converts clicks per second to speed
+    */
+    
+    /* Alternative idea for ws
+     * Calculate windspeed as follows:
+     * windIRQinterval holds the milliseconds between clicks
+     * 1 click per second = 2.4k/h (WINDCLICK constant)
+     * Instantaneous wind speed is (1000/windIRQinterval) * WINDCLICK
+     * If last click was more than 1s ago.. treat as zero wind
+     * (not yet implemented)
+     * 
+     */
+    
+    
     
     #ifdef DEBUG
       printf("...windClicks: %d\n", windClicks);
-      printf("... deltaTime: %.2f\n", deltaTime);
+    //printf("... deltaTime: %.2f\n", deltaTime);
     #endif  
     
-    float windSpeed = ((float)windClicks / deltaTime) * WINDCLICK;
+    float windSpeed = ((float)windClicks) * WINDCLICK;
     current_wind.speed = windSpeed;
     
     windClicks = 0; // Reset ready for next reading
-    lastWindCheck = time_us_64();
+    //lastWindCheck = raw_time_64();
     
     // Direction
     current_wind.direction = get_wind_direction();
@@ -252,16 +275,16 @@ float get_wind_direction () {
     #endif
       
     uint16_t adc = adc_read();
-    //#ifdef DEBUG 
-    //  printf("... ADC raw value: 0x%03x\n", adc);
-    //#endif
+    #ifdef DEBUG 
+      printf("... ADC raw value: 0x%03x\n", adc);
+    #endif
     int sector = get_sector(adc);
     
     float direction = (PI/8) * sector;
     
-    //#ifdef DEBUG
-    //printf("...wind direction in Radians: %.2f", direction);
-    //#endif  
+    #ifdef DEBUG
+    printf("...wind direction in Radians: %.2f", direction);
+    #endif  
     
     #ifdef TRACE
       printf("< get_wind_direction\n");

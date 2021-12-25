@@ -22,6 +22,10 @@
 //#define TRACE_ISR
 
 /* ================== recognised messages ============================
+ * All this code needs rewriting for binary messages !
+ * 
+ * 
+ * 
  * 200 - set rtc (time)
  *  
  * "200;e6605481db318236;2021;02;23;5;17;23;00;Z;\r\n"
@@ -132,7 +136,7 @@ void set_rtc_time(char * buffer, stationData * stationdata) {
 		    .min = atoi(mm),
 		    .sec = atoi(ss) }; 
 		    
-    strcpy(stationdata->timezone,tz); 
+    //strcpy(stationdata->timezone,tz); 
     
     rtc_set_datetime (&t);
     #ifdef DEBUG
