@@ -25,4 +25,6 @@ void string2hexString(char * input, char * output);
 void hextobin(const char * str, uint8_t * bytes, size_t bytes_len);
 void rak811_reset();
 
+int rak811_process_incoming (char * data, incomingMessage * im, int32_t * RSSI, int32_t * SNR);
+
 #endif

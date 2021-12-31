@@ -6,7 +6,8 @@
 
 messageHeader format_message_header (char messagetype);
 
-station100Message format_station_message (messageHeader mh, 
+/*
+ * station100Message format_station_message (messageHeader mh, 
 					  float temperature,
 					  float humidity,
 					  float pressure, 
@@ -18,6 +19,7 @@ station100Message format_station_message (messageHeader mh,
 					  float raintoday,
 					  float rain1h,
 					  float rainsincelast);
+					  * */
 					  
 					  
 weatherReport format_weather_report ( 

@@ -8,6 +8,12 @@
 int float_to_int(float in, float decimal_places);
 int32_t float_to_int32(float in, float decimal_places);
 time_t rtc_to_epoch (datetime_t rtc, int8_t timezone);
-datetime_t epoch_to_rtc (time_t epoch);
+void epoch_to_rtc (time_t epoch, datetime_t * rtc);
 float radians_to_degrees (float radians);
+
+int getNum(char ch);
+int32_t hex2int32 (char * hex);
+int16_t hex2int16 (char * hex);
+int hex2int(char * hex);
+
 #endif

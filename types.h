@@ -69,4 +69,26 @@ typedef struct {
     char bar_uncorrected [8];
     char bar_corrected [8]; 
     char eos; } weatherReport;    // end of string char
+ 
+// ==================== incoming mesages =========================
+
+typedef struct {
+    char timestamp [8];
+    char timezone [4]; } timeMessage200;
+    
+typedef struct {
+    char not_implemented_yet [20]; } stationDataMessage201;    
+    
+typedef union {
+    char message_ch [RX_BUFFER_SIZE]; // to be on the safe side
+    stationDataMessage201 stationdatamessage;
+    timeMessage200 timemessage; } incomingData;
+    
+typedef struct { 
+    char messagetype [2];
+    char hardwareID [HARDWARE_ID_LENGTH - 1]; // no null needed
+    incomingData incomingdata;
+    char eos; } incomingMessage;
+        
+   
 #endif
