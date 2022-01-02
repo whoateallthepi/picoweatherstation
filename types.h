@@ -12,9 +12,9 @@ typedef struct {
 typedef struct { 
     char hardwareID[HARDWARE_ID_LENGTH]; // stored in hex string for usability
     pico_unique_board_id_t boardID; // to replace above
-    char name[STATION_NAME_LENGTH];
     int8_t timezone; //  
-    char position[22]; // Lat long eg 53.27044,-1.62351
+    float latitude; 
+    float longitude; // Lat long eg 53.27044,-1.62351
     int32_t altitude; } stationData;
     
 /*typedef struct {
@@ -77,7 +77,9 @@ typedef struct {
     char timezone [4]; } timeMessage200;
     
 typedef struct {
-    char not_implemented_yet [20]; } stationDataMessage201;    
+    char latitude [8];
+    char longitude [8];
+    char altitude [4]; } stationDataMessage201;    
     
 typedef union {
     char message_ch [RX_BUFFER_SIZE]; // to be on the safe side

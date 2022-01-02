@@ -3,10 +3,10 @@
 
 // function prototypes
 
-void set_rtc_time(incomingMessage * data);
-void set_station_data(char * buffer, stationData * stationdata);
+void set_rtc_time(incomingMessage *data, uint32_t time_received);
+void set_station_data(incomingMessage *data);
 void report_station_details();
-void process_RX_message (char * buffer);
+void process_RX_message(char *buffer, uint32_t time_received);
 void open_uart(void);
 void on_uart_rx();
 

@@ -35,8 +35,6 @@
 #include "types.h"
 #include "openaws.h"
 
-//#include "bme280.h"     // Code for handling the PTU sensor
-#include "formatCSV.h"      // Code for handling CSV input and output
 #include "formatmessages.h" // new code for handling binary data transfers
                             // will supercede formatCSV
 #include "uart_lora.h"      // Code for IO / initialisation of the UART
@@ -51,6 +49,7 @@
 //#undef TRACE
 
 /* Wiring for BME280 - #define(d) in bme280.h
+   All now processed via core1_processing.c
 
    GPIO 16 (pin 21) MISO/spi0_rx-> SDO/SDO on bme280 board
    GPIO 17 (pin 22) Chip select -> CSB/!CS on bme280 board
@@ -113,6 +112,7 @@ int main(void)
   uint64_t led_on_time = 0;
   uint64_t led_off_time = 0;
   uint led_state = 0;
+  uint32_t time_message_received; // Used with time sync message
 
   char seconds = 0;     // Controls the main loop
   char seconds_2m = 0;  // index for the 2m readings wind speed/dir
@@ -233,10 +233,11 @@ int main(void)
     if (UART_RX_interrupt_time != 0)
     {
 
-      int32_t time_since_interrupt;
-
-      time_since_interrupt = now - UART_RX_interrupt_time;
-
+      uint32_t time_since_interrupt;
+      // the 32 bit timer wraps around every 35 minutes so allow for this
+      if (now >= UART_RX_interrupt_time) time_since_interrupt = now - UART_RX_interrupt_time;
+      else time_since_interrupt = (UINT32_MAX - UART_RX_interrupt_time) + now + 1;
+      
       if (!RAK811 || (time_since_interrupt > RAK811_RX_DELAY))
       {
 #ifdef DEBUG
@@ -244,6 +245,7 @@ int main(void)
         printf("... processing rx interrupt\n");
         printf("... incoming message: %s\n", RX_buffer);
 #endif
+        time_message_received = UART_RX_interrupt_time; // save for later
         UART_RX_interrupt_time = 0; // reset the interrupt time
         strcpy(RX_buffer_copy, RX_buffer);
 
@@ -252,7 +254,7 @@ int main(void)
         RX_buffer_pointer = RX_buffer; // Reset the pointer
                                        // ready for next msg
 
-        process_RX_message(RX_buffer_copy);
+        process_RX_message(RX_buffer_copy, time_message_received);
       }
     }
   } // tight loop
@@ -620,8 +622,9 @@ void setup_station_data()
 #endif
 
   stationdata.timezone = 0;
-
   stationdata.altitude = 181; // for testing!
+  stationdata.latitude = 0;
+  stationdata.longitude = 0;
 
 #ifdef TRACE
   printf("< setup_station_data\n");

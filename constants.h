@@ -57,4 +57,9 @@
 
 #define DEFAULT_DECIMAL_PLACES 2
 
+#define TIME_SYNC_DELAY 0000000 // Time sync messages need to allow for the delay
+                                // in the message getting from the the basestation to the 
+								// UART interrupt on the pico.
+								// This needs tweaking by experiment (in millionths of a second)
+
 #endif

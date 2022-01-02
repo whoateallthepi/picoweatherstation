@@ -53,7 +53,7 @@ extern volatile uint8_t *RX_buffer_pointer;
 
 extern volatile uint32_t UART_RX_interrupt_time;
 
-void process_RX_message(char *buffer)
+void process_RX_message(char *buffer, uint32_t time_received)
 {
   /*Takes an input message - 
     * checks for type and that the ID matches the station
@@ -69,6 +69,22 @@ void process_RX_message(char *buffer)
   int32_t snr;
   int type_i; // will hold mesage tye as an int
 
+  int x; // used to scan the buffer
+
+  /* Occasionally we are getting crud at the start of the buffer, so scan the
+   * first ten bytes of the buffer looking for 'at+', then nudge the buffer pointer 
+   * up so the 'a' is the initial byte. Meanwhile, I'll keep working on the problem 
+   * of the extra chars....promise
+   */
+ 
+  for (x = 0; x < 10; x++)
+  {
+    if (strncmp(buffer+x,"at+",3) == 0) break;
+  }
+
+  if (x < 10) buffer += x;
+  else return; // need to think about handling this error
+  
   chars_received = rak811_process_incoming(buffer, &im, &rssi, &snr);
 
   // get the message_type as an int so we can switch it
@@ -80,23 +96,23 @@ void process_RX_message(char *buffer)
   switch (type_i)
   {
   case 200:
-    set_rtc_time(&im);
+    set_rtc_time(&im, time_received);
     break;
   case 201:
-    //set_station_data(buffer_copy, &stationdata);
+    set_station_data(&im);
     break;
   case 202:
     //report_station_details();
   default:
     printf("Invalid type %d,n", type_i);
   }
-
+  printf("test");
 #ifdef TRACE
   printf("< process_RX_message\n");
 #endif
 }
 
-void set_rtc_time(incomingMessage *data)
+void set_rtc_time(incomingMessage *data, uint32_t time_received)
 {
 #ifdef TRACE
   printf("> set_rtc_time\n");
@@ -121,6 +137,31 @@ void set_rtc_time(incomingMessage *data)
 
   timezone = hex2int16(data->incomingdata.timemessage.timezone);
   epoch += (timezone * 3600);
+  /*There may be some delay in the data link, or delay in picking up the message.
+  * Compensate for this as much as possible by taking the difference between now and the
+  * time the interrupt on the UART was triggered (passed thru in 'time_received).
+  * As we are using the 32bit timer, there is a chance this has rolled over 
+  * (now < time_received) - so allow for that.
+  * 
+  * There is a lag between the sync 
+  * 
+  */
+  uint32_t now;
+  uint32_t delta;
+  now = time_us_32();
+
+  if (now >= time_received)
+    delta = now - time_received;
+  else
+    delta = (UINT32_MAX - time_received) + now + 1;
+
+  // Advance the clock by the typical lag for the data transfer
+
+  delta += TIME_SYNC_DELAY;
+
+  // convert to seconds and add to epoch
+
+  epoch += (delta / 1000000);
 
   epoch_to_rtc(epoch, &rtc);
 
@@ -145,27 +186,25 @@ void set_rtc_time(incomingMessage *data)
 #endif
 }
 
-void set_station_data(char *buffer, stationData *stationdata)
+void set_station_data(incomingMessage *data)
 {
 #ifdef TRACE
   printf("> set_station_data\n");
 #endif
-  //201;e6605481db318236;Curbar AWS;53.27044,-1.62351;180;
+  /*C9|e6605481db318236|0050FA90|FFFD85D1|00BE
+  * ^        ^            ^        ^       ^
+  * type   hardware key   lat     long    altitude
+  */
+  int32_t latitude, longitude;
+  int16_t altitude;
 
-  char *name, *position, *altitude;
+  latitude = hex2int32(data->incomingdata.stationdatamessage.latitude);
+  longitude = hex2int32(data->incomingdata.stationdatamessage.longitude);
+  altitude = hex2int16(data->incomingdata.stationdatamessage.altitude);
 
-  name = strtok(NULL, DELIM);
-  position = strtok(NULL, DELIM);
-  altitude = strtok(NULL, DELIM);
-
-  strcpy(stationdata->name, name);
-  strcpy(stationdata->position, position);
-  stationdata->altitude = atoi(altitude);
-
-#ifdef DEBUG
-  printf("... station data changed - name: %s, position: %s, altitude: %d\n",
-         stationdata->name, stationdata->position, stationdata->altitude);
-#endif
+  stationdata.longitude = (float)longitude / 100000; // five implied decimals
+  stationdata.latitude = (float)latitude / 100000;
+  stationdata.altitude = altitude;
 
 #ifdef TRACE
   printf("< set_station_data\n");
@@ -202,7 +241,6 @@ void open_uart(void)
   gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 
   // Read anything left over in the modem buffer
-
 
   while (uart_is_readable(UART_ID))
   {
@@ -256,7 +294,8 @@ void on_uart_rx()
     {
       printf("...ERROR: Input buffer overload\n");
       assert(chars_rx >= RX_BUFFER_SIZE);
-      break;    }
+      break;
+    }
     //asm volatile("nop \n nop \n nop"); // slow down a touch
   }
 
