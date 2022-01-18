@@ -53,14 +53,16 @@ extern volatile uint8_t *RX_buffer_pointer;
 
 extern volatile uint32_t UART_RX_interrupt_time;
 
-void process_RX_message(char *buffer, uint32_t time_received)
+extern int sendstationreport;
+
+void uart_process_RX_message(char *buffer, uint32_t time_received)
 {
   /*Takes an input message - 
     * checks for type and that the ID matches the station
     */
 
 #ifdef TRACE
-  printf("> process_RX_message\n");
+  printf("> uart_process_RX_message\n");
 #endif
 
   incomingMessage im; // will contain all the data from the message
@@ -70,6 +72,8 @@ void process_RX_message(char *buffer, uint32_t time_received)
   int type_i; // will hold mesage tye as an int
 
   int x; // used to scan the buffer
+
+  pico_unique_board_id_t incomingBoardID;
 
   /* Occasionally we are getting crud at the start of the buffer, so scan the
    * first ten bytes of the buffer looking for 'at+', then nudge the buffer pointer 
@@ -87,28 +91,48 @@ void process_RX_message(char *buffer, uint32_t time_received)
   
   chars_received = rak811_process_incoming(buffer, &im, &rssi, &snr);
 
+  /* the hardware ID in the incoming mesage is in hex chars 'e660...' convert this to 
+   * character values for to validate against board id 0xe6, 0x60, 0x54, etc
+   */
+    
+  for (int x = 0; x < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; x++) {
+    incomingBoardID.id[x] = hex2int(&im.hardwareID[x*2]);
+  }
+   
   // get the message_type as an int so we can switch it
 
   // should validate the hardware key here - skipping for testing
 
+  if (!bytes_compare ((char*)&incomingBoardID, (char*)&stationdata.boardID, PICO_UNIQUE_BOARD_ID_SIZE_BYTES)) {
+    // Message wasn't for us - flash the TX and RX leds together as a warning and exit.
+    led_on(RX_LED);
+    led_on(TX_LED);
+    busy_wait_ms(ERROR_FLASH);
+    led_off(RX_LED);
+    led_off(TX_LED);
+    return;
+  }
+  
   type_i = hex2int(im.messagetype);
 
   switch (type_i)
   {
   case 200:
     set_rtc_time(&im, time_received);
+    sendstationreport = 1; // Send a 101 message  to confirm at next opportunity
     break;
   case 201:
     set_station_data(&im);
+    sendstationreport = 1; // Send a 101 message  to confirm at next opportunity
     break;
   case 202:
-    //report_station_details();
+    sendstationreport = 1; // Send a 101 message  to confirm at next opportunity
   default:
     printf("Invalid type %d,n", type_i);
   }
-  printf("test");
+  
 #ifdef TRACE
-  printf("< process_RX_message\n");
+  printf("< uart_process_RX_message\n");
 #endif
 }
 
@@ -239,14 +263,9 @@ void open_uart(void)
 
   gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
   gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
-  // Read anything left over in the modem buffer
-
-  while (uart_is_readable(UART_ID))
-  {
-    char not_used = uart_getc(UART_ID);
-  }
-
+  uart_set_hw_flow(UART_ID, false, false);
+  uart_set_fifo_enabled(UART_ID, true);
+  
   // Set up a RX interrupt
 
   // Select correct interrupt for the UART we are using
@@ -287,7 +306,7 @@ void on_uart_rx()
   while (uart_is_readable(UART_ID))
   {
     *RX_buffer_pointer = uart_getc(UART_ID);
-    //sleep_ms(10);
+    busy_wait_us_32(10);
     RX_buffer_pointer++;
     chars_rx++;
     if (chars_rx >= RX_BUFFER_SIZE)

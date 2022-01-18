@@ -20,12 +20,9 @@ void midnight_reset (void);                      // Reporting
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature);
 float adjust_pressure (int32_t pressure, int32_t altitude, float temperature);
 
-void setup_led(uint led);
-
-void led_on(uint led);
-void led_off(uint led);
-
 void minute_processing (void);
-    
+
+bool core0_led_timer_callback(struct repeating_timer *t);
+int64_t core0_led_alarm_callback(alarm_id_t id, void *user_data);    
 
 #endif

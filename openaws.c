@@ -79,6 +79,8 @@ uint32_t pressure;
 uint32_t humidity;
 float decimal_temperature;
 
+int sendstationreport = 0; // set to force main loop to ping out a station status (message 101)
+
 // ==================== volatiles - set in IRQs by core_1 ==============
 
 volatile float rainHour[60];
@@ -122,6 +124,8 @@ int main(void)
 
   uint8_t RX_buffer_copy[RX_BUFFER_SIZE]; //working copy of the buffer
 
+  struct repeating_timer led0_timer;
+
   // ====================== Zero-fill arrays Start RTC ===================
 
 #if defined TRACE || defined DEBUG
@@ -140,6 +144,10 @@ int main(void)
   led_off(BOOT_LED);
 
   setup_led(CORE0_LED);
+  setup_led(TX_LED);
+  setup_led(RX_LED);
+
+  add_repeating_timer_ms(-CORE0_LED_INTERVAL, core0_led_timer_callback, NULL, &led0_timer);
 
   set_real_time_clock();
   setup_arrays();
@@ -203,7 +211,7 @@ int main(void)
          */
 
     now = time_us_32();
-
+    /*
     if (led_state)
     {
       // LED is ON - has it been lit for more than LED_FLASH
@@ -217,14 +225,14 @@ int main(void)
     else
     {
       // LED is OFF has it been out for more than LED INTERVAL
-      if ((now - led_off_time) > LED_INTERVAL)
+      if ((now - led_off_time) > CORE0_LED_INTERVAL)
       {
         led_on(CORE0_LED);
         led_on_time = now;
         led_state = 1;
       }
     }
-
+  */
 #ifdef DEBUG
         printf("....UART_RX_interrupt_time: %lld\n", UART_RX_interrupt_time);
 #endif
@@ -232,7 +240,7 @@ int main(void)
     
     if (UART_RX_interrupt_time != 0)
     {
-
+      led_on(RX_LED);
       uint32_t time_since_interrupt;
       // the 32 bit timer wraps around every 35 minutes so allow for this
       if (now >= UART_RX_interrupt_time) time_since_interrupt = now - UART_RX_interrupt_time;
@@ -245,6 +253,7 @@ int main(void)
         printf("... processing rx interrupt\n");
         printf("... incoming message: %s\n", RX_buffer);
 #endif
+        led_off(RX_LED);
         time_message_received = UART_RX_interrupt_time; // save for later
         UART_RX_interrupt_time = 0; // reset the interrupt time
         strcpy(RX_buffer_copy, RX_buffer);
@@ -254,7 +263,7 @@ int main(void)
         RX_buffer_pointer = RX_buffer; // Reset the pointer
                                        // ready for next msg
 
-        process_RX_message(RX_buffer_copy, time_message_received);
+        uart_process_RX_message(RX_buffer_copy, time_message_received);
       }
     }
   } // tight loop
@@ -290,8 +299,28 @@ void minute_processing(void)
       printf("...in the midnight hour..\n");
 #endif
       midnight_reset();
+      sendstationreport = 1; // ping off a station status report soon after midnight
     }
   }
+  /* If the sendstationreport flag is set (either above or because either message 200 or 201 
+   * has been received) kick off an alarm to do this in 25s time. This
+   * makes sure there is time for the basestation to process any of the minute-timed messages
+   */ 
+  if (sendstationreport) {
+    
+    add_alarm_in_ms(25000, station_report_callback, NULL, false);
+
+  }
+}
+
+int64_t station_report_callback(alarm_id_t id, void *user_data) {
+    stationReport sr;
+    sr = format_station_report();
+    rak811_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
+    sendstationreport = 0;
+
+    
+    return 0;
 }
 
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
@@ -409,11 +438,11 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
 #endif
 
   /* If the RAK811 modem is connected, add the required control sequences
-     * otherwise just push the data to the UART
+     * otherwise just push the data to the UART - for testing
      * */
 
 #ifdef RAK811
-  rak811_put_bin((char *)&sm, sizeof(weatherReport)); // treat the structure as bytes
+  rak811_put_hex((char *)&sm, sizeof(weatherReport)); // treat the structure as bytes
 #else
   uart_puts(UART_ID, buffer);
 #endif
@@ -629,14 +658,7 @@ void setup_station_data()
 #ifdef TRACE
   printf("< setup_station_data\n");
 #endif
-  return;
-}
-void launch_core1(void)
-{
-#ifdef DEBUG
-  printf("Hello from core1\n");
-#endif
-  core1_process();
+   
   return;
 }
 
@@ -676,22 +698,16 @@ float adjust_pressure(int32_t pressure, int32_t altitude, float temperature)
   return pressure_corrected;
 }
 
-void setup_led(uint led)
-{
-  gpio_init(led);
-  gpio_set_dir(led, GPIO_OUT);
-  gpio_put(led, 0);
-  return;
-}
 
-void led_on(uint led)
-{
-  gpio_put(led, 1);
-  return;
-}
 
-void led_off(uint led)
-{
-  gpio_put(led, 0);
-  return;
+bool core0_led_timer_callback(struct repeating_timer *t) {
+    led_on(CORE0_LED);
+    
+    add_alarm_in_ms(LED_FLASH, core0_led_alarm_callback, NULL, false);
+    return true;
+}
+int64_t core0_led_alarm_callback(alarm_id_t id, void *user_data) {
+    led_off(CORE0_LED);
+    // Can return a value here in us to fire in the future
+    return 0;
 }

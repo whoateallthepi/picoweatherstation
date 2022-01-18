@@ -8,6 +8,7 @@
 
 #include "types.h"
 #include "rak811.h"
+#include "utilities.h"
 
 #define LORA_RECEIVE 1
 #define LORA_SEND 2
@@ -126,7 +127,9 @@ void rak811_puts(char *data)
   printf("...about to send: %s\n", tx_buffer);
 #endif
 
+  led_on(TX_LED);
   uart_puts(UART_ID, tx_buffer);
+  led_off(TX_LED);
 
 #ifdef DEBUG
   printf("...about to wait");
@@ -213,10 +216,10 @@ void rak811_puts(char *data)
 #endif
 }
 
-void rak811_put_bin(char *data, int length)
+void rak811_put_hex(char *data, int length)
 {
 #ifdef TRACE
-  printf("> rak811_put_bin\n");
+  printf("> rak811_put_hex\n");
 #endif
   char tx_buffer[TX_BUFFER_SIZE];
   char data_hex[1000]; // each ascii char will take 2 hex
@@ -238,7 +241,9 @@ void rak811_put_bin(char *data, int length)
   printf("...about to send: %s\n", tx_buffer);
 #endif
 
+  led_on(TX_LED);
   uart_puts(UART_ID, tx_buffer);
+  led_off(TX_LED);
 
 #ifdef DEBUG
   printf("...about to wait");

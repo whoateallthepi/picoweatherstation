@@ -20,11 +20,13 @@
 #define PARITY    UART_PARITY_NONE
 
 #define CORE0_LED 14
-#define CORE1_LED 13
+#define RX_LED 15
 #define BOOT_LED 15
+#define TX_LED 13
 #define BOOT_LED_FLASH 1000000 // How long to flash the boot LED
-#define LED_FLASH 1000 // how brief is the flash 1million = 1s
-#define LED_INTERVAL 5000000 // every 5 seconds
+#define LED_FLASH 10 // how brief is the flash 1000 = 1s
+#define ERROR_FLASH 500 // Used to report an error 1000 = 1s
+#define CORE0_LED_INTERVAL 10000 // every 10 seconds
 
 #define RX_BUFFER_SIZE 550 // in bytes
 #define TX_BUFFER_SIZE 300 // in bytes - review this

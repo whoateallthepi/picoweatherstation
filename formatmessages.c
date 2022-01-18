@@ -129,7 +129,7 @@ weatherReport format_weather_report (
     format_int16(sm.wind_speed_avg2m, float_to_int(wind2maverage.speed, DEFAULT_DECIMAL_PLACES));
     format_int16(sm.wind_dir_avg2m, radians_to_degrees(wind2maverage.direction));
     format_int16(sm.wind_gust_10m, float_to_int(wind10mmax.speed, DEFAULT_DECIMAL_PLACES));
-    format_int16(sm.wind_gust_dir_10m, radians_to_degrees(wind10mmax.speed));
+    format_int16(sm.wind_gust_dir_10m, radians_to_degrees(wind10mmax.direction));
     format_int16(sm.rain_today, float_to_int(raintoday, DEFAULT_DECIMAL_PLACES));
     format_int16(sm.rain_1h, float_to_int(rain1h, DEFAULT_DECIMAL_PLACES));
     format_int16(sm.rain_since_last, float_to_int(rainsincelast, DEFAULT_DECIMAL_PLACES));
@@ -137,6 +137,16 @@ weatherReport format_weather_report (
     sm.eos = '\0'; // Set up end of string to make it easier to use string functions later
     
     return sm;
+}
+
+stationReport format_station_report () {
+    stationReport sr;
+    sr.header = format_message_header(101);
+    format_int32(sr.latitude,float_to_int(stationdata.latitude, 5));
+    format_int32(sr.longitude,float_to_int(stationdata.longitude, 5));
+    format_int16(sr.altitude,float_to_int(stationdata.altitude, 0));
+    sr.eos = '\0'; // Set up end of string to make it easier to use string functions later
+    return sr;
 }
 
 void format_int16 (char * buffer, int16_t input) {

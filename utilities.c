@@ -2,6 +2,7 @@
 #include "utilities.h"
 #include <math.h>
 #include <time.h>
+#include "hardware/gpio.h"
 
 #include "constants.h"
 
@@ -173,4 +174,30 @@ int getNum(char ch)
         }
     }
     return num;
+}
+void setup_led(uint led)
+{
+  gpio_init(led);
+  gpio_set_dir(led, GPIO_OUT);
+  gpio_put(led, 0);
+  return;
+}
+
+void led_on(uint led)
+{
+  gpio_put(led, 1);
+  return;
+}
+
+void led_off(uint led)
+{
+  gpio_put(led, 0);
+  return;
+}
+
+int bytes_compare (const char * bytes1, const char * bytes2, const int bytes) {
+    for (int x=0; x < bytes; x ++) {
+        if (bytes1[x] != bytes2[x]) return 0;
+    }
+    return 1;
 }

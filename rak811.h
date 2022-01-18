@@ -19,7 +19,7 @@
 void rak811_set_mode (uint8_t mode);
 void rak811_puts (char * data);
 void rak811_format_recvd (char * data);
-void rak811_put_bin (char * data, int length);
+void rak811_put_hex (char * data, int length);
 void data2hexString(char * data, char * output, int length);
 void string2hexString(char * input, char * output);
 void hextobin(const char * str, uint8_t * bytes, size_t bytes_len);

@@ -69,6 +69,13 @@ typedef struct {
     char bar_uncorrected [8];
     char bar_corrected [8]; 
     char eos; } weatherReport;    // end of string char
+
+typedef struct {
+    messageHeader header;
+    char latitude [8];
+    char longitude [8];
+    char altitude [4];
+    char eos; } stationReport;
  
 // ==================== incoming mesages =========================
 
