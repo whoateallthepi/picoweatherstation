@@ -3,6 +3,7 @@
 #include <math.h>
 #include <time.h>
 #include "hardware/gpio.h"
+#include "pico/stdlib.h"
 
 #include "constants.h"
 
@@ -195,6 +196,16 @@ void led_off(uint led)
   return;
 }
 
+void double_flash(uint led) {
+    led_off(led);
+    led_on(led);
+    busy_wait_ms(LED_FLASH);
+    led_off(led);
+    busy_wait_ms(100);
+    led_on(led);
+    busy_wait_ms(LED_FLASH);
+    led_off(led);
+}
 int bytes_compare (const char * bytes1, const char * bytes2, const int bytes) {
     for (int x=0; x < bytes; x ++) {
         if (bytes1[x] != bytes2[x]) return 0;

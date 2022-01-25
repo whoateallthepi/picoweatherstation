@@ -19,6 +19,7 @@ int hex2int(char * hex);
 void setup_led(uint led);
 void led_on(uint led);
 void led_off(uint led);
+void double_flash(uint led);
 
 int bytes_compare (const char * bytes1, const char * bytes2, const int bytes);
 

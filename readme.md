@@ -29,7 +29,7 @@ Note the GND connections could be to any of the pico ground pins
 | ... |
 | 17    | GP13     | to status LED |Via appropriate resistor say 330 ohm, flashed on message send. Also flashed with RX_LED to indicate receive with an unknown hardware key. | TX_LED |
 | 18    | GND      | used for LEDs | | 
-| 19    | GP14     | to status LED |flashed every CORE0_LED_INTERVAL microseconds | CORE0_LED |
+| 19    | GP14     | to status LED |flashed every CORE0_LED_INTERVAL microseconds. Also double flashed to confirm a successfully decoded incoming message | CORE0_LED |
 | 20    | GP15     | to status LED |flashed on boot for BOOT_LED_FLASH microseconds. Also on message receive. Flashed with TX_LED to indicate receive with an unknown hardware key. | BOOT_LED RX_LED|
 | 21    | SPIO RX  | to BME280 | Pin names vary on sensor boards - look for SDO | |
 | 22    | SPIO CSn | to BME280 | Typically CSB/CS - chip select | |

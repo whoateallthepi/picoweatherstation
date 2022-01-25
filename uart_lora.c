@@ -193,6 +193,9 @@ void set_rtc_time(incomingMessage *data, uint32_t time_received)
 
   stationdata.timezone = timezone;
 
+  // Double flash CORE0_LED to confirm update
+  double_flash(CORE0_LED);
+
 #ifdef DEBUG
   printf("...Time set\n");
   printf("...RTC is: %i-%i-%i %02i:%02i:%02i Timezone: %s\n",
@@ -229,6 +232,9 @@ void set_station_data(incomingMessage *data)
   stationdata.longitude = (float)longitude / 100000; // five implied decimals
   stationdata.latitude = (float)latitude / 100000;
   stationdata.altitude = altitude;
+
+  // Double flash CORE0_LED to confirm update
+  double_flash(CORE0_LED);
 
 #ifdef TRACE
   printf("< set_station_data\n");
