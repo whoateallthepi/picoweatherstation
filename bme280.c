@@ -150,7 +150,7 @@ static void write_register(uint8_t reg, uint8_t data) {
     cs_select();
     spi_write_blocking(SPI_PORT, buf, 2);
     cs_deselect();
-    sleep_ms(10);
+    busy_wait_ms(10);
 }
 
 static void read_registers(uint8_t reg, uint8_t *buf, uint16_t len) {
@@ -160,10 +160,10 @@ static void read_registers(uint8_t reg, uint8_t *buf, uint16_t len) {
     reg |= READ_BIT;
     cs_select();
     spi_write_blocking(SPI_PORT, &reg, 1);
-    sleep_ms(10);
+    busy_wait_ms(10);
     spi_read_blocking(SPI_PORT, 0, buf, len);
     cs_deselect();
-    sleep_ms(10);
+    busy_wait_ms(10);
 }
 
 /* This function reads the manufacturing assigned compensation parameters from the device */

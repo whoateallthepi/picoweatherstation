@@ -3,8 +3,10 @@
  * This version splits the processing. Core 0 handles the interface with
  * the modem (RAK811), plus all the reporting, timing, clock etc.
  * Core 1 handles the readings of the rain/wind interrupts, the ADC (for
- * wind direction) and the temperature/pressure/humidity readings
- * (BMP280). 
+ * wind direction)
+ * Core 0 also read the temperature/pressure/humidity readings
+ * (BMP280) as part of the reporting function.  
+ *
  * Communication between the cores is via a series of file scope variables.
  * A more formal FIFO mechanism for intercore communication is available
  * - but this would be (?) overkill in this case. 
@@ -41,6 +43,7 @@
 #include "rak811.h"         // The LORA modem unit
 
 #include "core1_processing.h"
+#include "bme280.h"
 #include "utilities.h"
 
 //#define DEBUG
@@ -155,6 +158,16 @@ int main(void)
   setup_station_data(); // HardwareID
 
   open_uart();
+
+  // Pressure, temp and humidity sensor
+
+  if (!bme280_initialise())
+  {
+    printf("Error: failed to initialise BME280\n");
+    assert(true);
+  }
+
+
 
 #ifdef DEBUG
   printf("...about to launch core1\n");
@@ -288,6 +301,8 @@ void minute_processing(void)
     printf("...time to report\n");
 #endif
 
+    bme280_fetch(&humidity, &pressure, &temperature);
+    
     report_weather(humidity, pressure, temperature);
 
     // =============midnight processing=======================

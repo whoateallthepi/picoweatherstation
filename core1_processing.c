@@ -8,7 +8,6 @@
 #include "hardware/adc.h"
 #include <time.h>
 
-//#include "bme280.h"
 #include "types.h"
 
 //#define DEBUG
@@ -84,37 +83,12 @@ void core1_process(void)
   adc_gpio_init(WIND_DIR_GP); // makes sure no pullups etc
   adc_select_input(WIND_DIR);
 
-  // Pressure, temp and humidity sensor
-
-  if (!bme280_initialise())
-  {
-    printf("Error: failed to initialise BME280\n");
-    assert(true);
-  }
-
-  bme280_fetch(&humidity, &pressure, &temperature);
-
-  /* ======================== kick off the 1s timer =====================
-     * negative value = time from start of interrupt to start of next 
-     * interrupt
-     */
-
   add_repeating_timer_ms(-1000, repeating_timer_callback_1s, NULL, &timer1s);
 
   while (1)
   {
-    // We can't read the bme280 during the 1s timer as the
-    // library code contains sleeps and you can't sleep during an
-    // interrupt - who knew? So do it whenever we wake up
-    //
-    bme280_fetch(&humidity, &pressure, &temperature);
-#ifdef DEBUG
-    printf("Humidity = %.2f%%\n", humidity / 1024.0);
-    printf("Pressure = %dPa\n", pressure);
-    printf("Mslp: %.2f mB\n", mslp);
-    printf("Temp. = %.2fC\n", temperature / 100.0);
-#endif
-    sleep_ms(CORE1_SLEEP_CYCLE);
+    tight_loop_contents();
+    //sleep_ms(CORE1_SLEEP_CYCLE);
   }
 }
 

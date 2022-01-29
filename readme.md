@@ -51,14 +51,25 @@ Note the GND connections could be to any of the pico ground pins
 #### Lora setup
 Set the RAK811 frequencies and p2p mode from a serial terminal before you start - this isn't done from this code. 
 
+##### Some useful AT commands for RAK811
+at+set_config=lorap2p:871525000:8:0:1:8:20 
+at+set_config=lorap2p:871525000:12:0:1:8:10
+frequency:spreadfact:bandwidth:Codingrate:Preamlen:Power
+
+at+get_config=lora:status
+
+Airtime calculator https://avbentem.github.io/airtime-calculator/ttn/eu868/49
+
+
 ## Pico processing and design
 Openaws is coded in C using the standard Pico SDK kit. The code uses the pico's real time clock (RTC) plus various timer interrupts and alarms to collect data and report the weather.
-The design uses core0 to handle the communication links, generate the various outgoing messages and process any incoming ones. core1 reads the various sensors.
+The design uses core0 to handle the communication links, generate the various outgoing messages and process any incoming ones. core0 also reads the pressure/temperature/humidity enor as part of the reporting process. core1 handles the rain gauge and wind speed interrupts, and teh wind direction ADC.
 The pico hardware key is encoded on the incoming and outgoing messages (for identification). This should be checked on incoming messages too! Currently there is no security on the incoming mesages - this needs implementing for a 'production' system.
 ### core0
 Weather reports (message type 100) are generated at REPORTING_FREQUENCY minute intervals. Note this should be a divisor of 60. The reports are triggered by a repeating alarm set on the pico's real time clock (RTC). The clock is set to a default time on startup. It is synced with the basestation when it receives a 201 message type (below). 
 Station details (including the altitude setting important for correct pressure calculation) are also defauted but need setting up with a 200 message (below).
 Various totals are reset at midnight on the RTC. Note the RTC is set to local time but the data messages use an eight-byth epoch UTC time. (Beware the 2034 bug). So the station data includes a timezone which has to be incorporated into the UTC time conversion. 
+The pressure/temperature/humidity sensor (currently BME280) is read as part of the weather report process.
 #### uart handling
 The code is set up to communicate with the RAK811 via at codes. For development you can #undef RAK811 and jut get serial output to a terminal etc. Although much of that alternative code has been untried for most of the development cycle. The data arrives from (and is sent to) the RAK811 as hex encoded characters eg, a typical weather report is sent as: 
 ``` 
