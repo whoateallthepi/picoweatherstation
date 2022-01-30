@@ -114,9 +114,9 @@ int main(void)
 {
 
   uint64_t now;
-  uint64_t led_on_time = 0;
-  uint64_t led_off_time = 0;
-  uint led_state = 0;
+  uint64_t core0_led_on_time = 0;
+  uint64_t core0_led_off_time = 0;
+  uint core0_led_state = 0; // off
   uint32_t time_message_received; // Used with time sync message
 
   char seconds = 0;     // Controls the main loop
@@ -150,7 +150,7 @@ int main(void)
   setup_led(TX_LED);
   setup_led(RX_LED);
 
-  add_repeating_timer_ms(-CORE0_LED_INTERVAL, core0_led_timer_callback, NULL, &led0_timer);
+  //add_repeating_timer_ms(-CORE0_LED_INTERVAL, core0_led_timer_callback, NULL, &led0_timer);
 
   set_real_time_clock();
   setup_arrays();
@@ -224,28 +224,28 @@ int main(void)
          */
 
     now = time_us_32();
-    /*
-    if (led_state)
+    
+    if (core0_led_state)
     {
       // LED is ON - has it been lit for more than LED_FLASH
-      if ((now - led_on_time) > LED_FLASH)
+      if ((now - core0_led_on_time) > LED_FLASH)
       {
         led_off(CORE0_LED);
-        led_off_time = now;
-        led_state = 0;
+        core0_led_off_time = now;
+        core0_led_state = 0;
       }
     }
     else
     {
       // LED is OFF has it been out for more than LED INTERVAL
-      if ((now - led_off_time) > CORE0_LED_INTERVAL)
+      if ((now - core0_led_off_time) > CORE0_LED_INTERVAL)
       {
         led_on(CORE0_LED);
-        led_on_time = now;
-        led_state = 1;
+        core0_led_on_time = now;
+        core0_led_state = 1;
       }
     }
-  */
+  
 #ifdef DEBUG
         printf("....UART_RX_interrupt_time: %lld\n", UART_RX_interrupt_time);
 #endif

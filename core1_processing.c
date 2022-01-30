@@ -83,16 +83,25 @@ void core1_process(void)
   adc_gpio_init(WIND_DIR_GP); // makes sure no pullups etc
   adc_select_input(WIND_DIR);
 
-  add_repeating_timer_ms(-1000, repeating_timer_callback_1s, NULL, &timer1s);
+  lastSecond = time_us_64();
+
+  //add_repeating_timer_ms(-1000, repeating_timer_callback_1s, NULL, &timer1s);
+  // switched to loop processing of 1s values to improve accuracy of wind readings 
 
   while (1)
   {
-    tight_loop_contents();
-    //sleep_ms(CORE1_SLEEP_CYCLE);
+    if (time_us_64() - lastSecond >= 1000000)
+    {
+      lastSecond += 1000000;
+      second_processing();
+    }
+
+    sleep_ms(CORE1_SLEEP_CYCLE);
   }
 }
 
-bool repeating_timer_callback_1s(struct repeating_timer *t)
+//bool repeating_timer_callback_1s(struct repeating_timer *t)
+void second_processing()
 {
 
 #ifdef DEBUG
@@ -137,7 +146,7 @@ bool repeating_timer_callback_1s(struct repeating_timer *t)
     gust10m[minutes_10m].speed = 0.0;   // and wind gusts
     gust10m[minutes_10m].direction = 0; //
   }
-  return true;
+  //return true;
 }
 
 void gpio_callback(uint gpio, uint32_t events)
@@ -199,25 +208,7 @@ void get_wind_readings()
 #ifdef TRACE
   printf("> get_wind_readings(core1)\n");
 #endif
-  /* The deltaTime calc is no longer needed as we are now calling this 
-     * via a timer every second
-     * 
-    float deltaTime;
-    uint64_t deltaTime_micros;
-    uint64_t now;
-    
-    now = raw_time_64();
-    
-    deltaTime_micros = now - lastWindCheck;
-    
-    #ifdef DEBUG
-      printf("...deltaTime_micros: %lld\n", deltaTime_micros);
-    #endif  
-    
-    deltaTime = deltaTime_micros / 1000000.0; // in seconds 
-    
-    // WINDCLICK converts clicks per second to speed
-    */
+  // WINDCLICK converts clicks per second to speed
 
   /* Alternative idea for ws
      * Calculate windspeed as follows:
@@ -233,12 +224,18 @@ void get_wind_readings()
   printf("...windClicks: %d\n", windClicks);
 //printf("... deltaTime: %.2f\n", deltaTime);
 #endif
+  float deltaTime;
+  uint64_t deltaTime_micros;
+  uint64_t now;
+  now = time_us_64();
+  deltaTime_micros = now - lastWindCheck;
+  deltaTime = deltaTime_micros / 1000000.0;
 
-  float windSpeed = ((float)windClicks) * WINDCLICK;
+  float windSpeed = (((float)windClicks) * WINDCLICK) / deltaTime;
   current_wind.speed = windSpeed;
 
   windClicks = 0; // Reset ready for next reading
-  //lastWindCheck = raw_time_64();
+  lastWindCheck = now;
 
   // Direction
   current_wind.direction = get_wind_direction();

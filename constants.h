@@ -24,9 +24,9 @@
 #define BOOT_LED 15
 #define TX_LED 13
 #define BOOT_LED_FLASH 1000000 // How long to flash the boot LED
-#define LED_FLASH 10 // how brief is the flash 1000 = 1s
+#define LED_FLASH 250 // how brief is the flash 1000000 = 1s
 #define ERROR_FLASH 500 // Used to report an error 1000 = 1s
-#define CORE0_LED_INTERVAL 10000 // every 10 seconds
+#define CORE0_LED_INTERVAL 10000000 // every 10 seconds
 
 #define RX_BUFFER_SIZE 550 // in bytes
 #define TX_BUFFER_SIZE 300 // in bytes - review this
@@ -52,10 +52,7 @@
 #define DEFAULT_MM 54
 #define DEFAULT_SS 50
 
-#define CORE1_SLEEP_CYCLE 60000 // In milliseconds. Also frequency of 
-								// pressure/temp/humidity readings
-								// which get done each cycle
-
+#define CORE1_SLEEP_CYCLE 250 // In milliseconds. 
 
 #define DEFAULT_DECIMAL_PLACES 2
 
