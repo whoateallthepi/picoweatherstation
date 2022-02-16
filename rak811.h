@@ -9,7 +9,7 @@
 
 
 #define RAK811 1 // Adds extra processing call for messages 
-#define RAK811_RX_DELAY 1000000 // Microseconds (1s)
+#define RAK811_RX_DELAY 2000000 // Microseconds (2s)
 
 #define RAK811_RECVD_HEADER_LEN 8
 

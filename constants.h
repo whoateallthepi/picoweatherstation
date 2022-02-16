@@ -18,6 +18,7 @@
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY    UART_PARITY_NONE
+#define UART_CHARACTER_DELAY 250 // in millionths/seconds. Tweak up if messages arive incomplete
 
 #define CORE0_LED 14
 #define RX_LED 15

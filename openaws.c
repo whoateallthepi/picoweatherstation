@@ -269,7 +269,7 @@ int main(void)
         led_off(RX_LED);
         time_message_received = UART_RX_interrupt_time; // save for later
         UART_RX_interrupt_time = 0; // reset the interrupt time
-        strcpy(RX_buffer_copy, RX_buffer);
+        strncpy(RX_buffer_copy, RX_buffer, RX_BUFFER_SIZE);
 
         memset(RX_buffer, '\0', RX_BUFFER_SIZE); // clear RX buffer
 
@@ -324,6 +324,7 @@ void minute_processing(void)
   if (sendstationreport) {
     
     add_alarm_in_ms(25000, station_report_callback, NULL, false);
+    sendstationreport = 0;
 
   }
 }
@@ -332,9 +333,6 @@ int64_t station_report_callback(alarm_id_t id, void *user_data) {
     stationReport sr;
     sr = format_station_report();
     rak811_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
-    sendstationreport = 0;
-
-    
     return 0;
 }
 

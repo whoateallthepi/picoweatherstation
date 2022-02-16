@@ -81,13 +81,14 @@ void uart_process_RX_message(char *buffer, uint32_t time_received)
    * of the extra chars....promise
    */
  
-  for (x = 0; x < 10; x++)
+  /*for (x = 0; x < 10; x++)
   {
     if (strncmp(buffer+x,"at+",3) == 0) break;
   }
 
   if (x < 10) buffer += x;
   else return; // need to think about handling this error
+  */
   
   chars_received = rak811_process_incoming(buffer, &im, &rssi, &snr);
 
@@ -128,7 +129,7 @@ void uart_process_RX_message(char *buffer, uint32_t time_received)
   case 202:
     sendstationreport = 1; // Send a 101 message  to confirm at next opportunity
   default:
-    printf("Invalid type %d,n", type_i);
+    printf("Invalid type %d,n", type_i); // Add some error flashes??
   }
   
 #ifdef TRACE
@@ -312,7 +313,7 @@ void on_uart_rx()
   while (uart_is_readable(UART_ID))
   {
     *RX_buffer_pointer = uart_getc(UART_ID);
-    busy_wait_us_32(10);
+    busy_wait_us_32(UART_CHARACTER_DELAY); // slow loop a little to match UART speed 
     RX_buffer_pointer++;
     chars_rx++;
     if (chars_rx >= RX_BUFFER_SIZE)
