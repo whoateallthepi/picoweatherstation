@@ -69,8 +69,8 @@ The pico hardware key is encoded on the incoming and outgoing messages (for iden
 Weather reports (message type 100) are generated at REPORTING_FREQUENCY minute intervals. Note this should be a divisor of 60. The reports are triggered by a repeating alarm set on the pico's real time clock (RTC). The clock is set to a default time on startup. It is synced with the basestation when it receives a 201 message type (below). 
 Station details (including the altitude setting important for correct pressure calculation) are also defauted but need setting up with a 200 message (below).
 Various totals are reset at midnight on the RTC. Note the RTC is set to local time but the data messages use an eight-byth epoch UTC time. (Beware the 2034 bug). So the station data includes a timezone which has to be incorporated into the UTC time conversion. 
-The pressure/temperature/humidity sensor (currently BME280) is read as part of the weather report process.
-#### uart handling
+The pressure/temperature/humidity sensor (currently BME280) is read as part of the weather report process. There is an SPI connection to the **BME280 sensor** At the moment the sensor code has sleeps in it so it cannot be run via a timer. 
+#### uart handling -p2p
 The code is set up to communicate with the RAK811 via at codes. For development you can #undef RAK811 and jut get serial output to a terminal etc. Although much of that alternative code has been untried for most of the development cycle. The data arrives from (and is sent to) the RAK811 as hex encoded characters eg, a typical weather report is sent as: 
 ``` 
 at+send=lorap2p:64E6605481DB31823661DC78D0000000B4000001E000B4000000000000000012D107160000007000000001868D00018ED5\r\n 
@@ -93,10 +93,12 @@ A relative degree of certainty has been reached by trying various delays in the 
  
 **Outgoing messages** are a relative breeze. Setting these up is largely about coercing C variable into hex-byte arrays and stuffing them at the 
 RAK811. The RAK811 is generally in 'receive' mode (at+set_config=lorap2p:transfer_mode:1) but this is switched to transfer_mode:2 for sending. This isn't full duplex, but incoming messages should be rare (once a day at most). So we just wear any problems.
+#### uart handling LoraWan
+The intention is to move away from lora p2p comms to a LoraWan setup.Watch this space.
 #### Weather data
 All the weather data is being recorded over in core1. This is kept in global variables. The pico does have some proper fifo inter-core communication mechanisms. Maybe one day... but in the meantime, we do not seem to get any problems of variable being read whilst updating. 
 ### core1
-Life is simpler over in core1. There is an SPI connection to the **BME280 sensor** (read every second via the main loop.) At the moment the sensor code has sleeps in it so it cannot be run via a timer. A one second repeating timer updates arrays of wind and rainfall data. To allow generation of, for example rain in the past hour, and 2 minute wind averages.
+Life is simpler over in core1. A one second repeating timer updates arrays of wind and rainfall data. To allow generation of, for example rain in the past hour, and 2 minute wind averages.
 
 **Rain** is recoded via a gpio interrupt callback. Each click of the tipping gauge is RAIN_CLICK mms of rain. 
 
