@@ -39,12 +39,16 @@
 
 #include "formatmessages.h" // new code for handling binary data transfers
                             // will supercede formatCSV
-#include "uart_lora.h"      // Code for IO / initialisation of the UART
-#include "rak811.h"         // The LORA modem unit
+//#include "uart_lora.h"      // Code for IO / initialisation of the UART
+//#include "rak811.h"         // The LORA modem unit
+#include "rak811_lorawan.h" // New code to use lowrawan rather than P2P - will supercede rak811.h
 
 #include "core1_processing.h"
 #include "bme280.h"
 #include "utilities.h"
+#include "ds3231.h"
+
+#define DS3231 // include the code for external clock
 
 //#define DEBUG
 //#define TRACE
@@ -116,7 +120,7 @@ int main(void)
   uint64_t now;
   uint64_t core0_led_on_time = 0;
   uint64_t core0_led_off_time = 0;
-  uint core0_led_state = 0; // off
+  uint core0_led_state = 0;       // off
   uint32_t time_message_received; // Used with time sync message
 
   char seconds = 0;     // Controls the main loop
@@ -157,22 +161,32 @@ int main(void)
 
   setup_station_data(); // HardwareID
 
-  open_uart();
+  stationdata.network_status = NETWORK_INITIALISING;
+
+  if (rak811_lorawan_initialise())
+  {
+    stationdata.network_status = NETWORK_MODEM_ERROR;
+    led_double_flash(BOOT_LED);
+  }
+  else
+  {
+    rak811_lorawan_join();
+  }
+   
 
   // Pressure, temp and humidity sensor
 
-  if (!bme280_initialise())
+  if (bme280_initialise())
   {
     printf("Error: failed to initialise BME280\n");
-    assert(true);
+    led_repeat_flash(CORE0_LED);
+    //need to flash LEDs
   }
-
-
 
 #ifdef DEBUG
   printf("...about to launch core1\n");
 #endif
-  
+
   multicore_launch_core1(core1_process); // handles all the sensors
                                          // consider a delay/ack here
 
@@ -197,34 +211,8 @@ int main(void)
   while (1)
   {
 
-    /* ======================== UART ====================
-         * Do this every cycle:
-         * 
-         * All the work has been done by an ISR on the RX UART
-         * on_uart_rx in uart_lora.c. The buffer and buffer 
-         * pointer have file scope (RX_buffer and RX_buffer_pointer)
-         *          * 
-         * UART_RX_interrupt_time is used to control the input. It is 
-         * initialised to zero then updated the first time on_rx_uart
-         * is called. When the whole message has been received, 
-         * UART_RX_interrupt_time is set to zero below.
-         * 
-         * Our input message rate is very low - a handful per day - 
-         * otherwise some better interrupt/flow control would be needed.
-         * 
-         * With the RAK811 (lora), messages seem to arrive quite slowly. 
-         * So check UART_RX_interrupt_time. If it is less than RAK811_RX_DELAY
-         * microseconds ago, wait to process until the next time through 
-         * the loop. This gives a better chance of a 'complete' message
-         * 
-         * When ready to process the RX message, make a copy of the buffer
-         * then reset the pointer. We don't want to use the original buffer 
-         * in case it is blatted by an unexpected incoming message.
-         * 
-         */
-
     now = time_us_32();
-    
+
     if (core0_led_state)
     {
       // LED is ON - has it been lit for more than LED_FLASH
@@ -245,12 +233,12 @@ int main(void)
         core0_led_state = 1;
       }
     }
-  
+
 #ifdef DEBUG
-        printf("....UART_RX_interrupt_time: %lld\n", UART_RX_interrupt_time);
+    printf("....UART_RX_interrupt_time: %lld\n", UART_RX_interrupt_time);
 #endif
-    
-    
+
+    /*
     if (UART_RX_interrupt_time != 0)
     {
       led_on(RX_LED);
@@ -278,7 +266,9 @@ int main(void)
 
         uart_process_RX_message(RX_buffer_copy, time_message_received);
       }
-    }
+    } 
+    */
+
   } // tight loop
 } // main
 
@@ -297,43 +287,47 @@ void minute_processing(void)
 
   if ((current_time.min == 0) || (current_time.min % REPORTING_FREQUENCY) == 0)
   {
-#ifdef TRACE
-    printf("...time to report\n");
-#endif
 
     bme280_fetch(&humidity, &pressure, &temperature);
-    
+
     report_weather(humidity, pressure, temperature);
 
     // =============midnight processing=======================
 
-    if (current_time.hour == 0 &&
-        current_time.min == 0)
+    if (current_time.min == 0)
     {
-#ifdef TRACE
-      printf("...in the midnight hour..\n");
-#endif
-      midnight_reset();
-      sendstationreport = 1; // ping off a station status report soon after midnight
+      //check if it's midnight, local time. The clock is always UTC)
+      int8_t adjusted_hour = (current_time.hour + stationdata.timezone);
+      if (adjusted_hour == 0 || adjusted_hour == 24)
+      {
+        midnight_reset();
+        stationdata.send_station_report = 1; // ping off a station status report soon after midnight
+      }
     }
   }
   /* If the sendstationreport flag is set (either above or because either message 200 or 201 
    * has been received) kick off an alarm to do this in 25s time. This
    * makes sure there is time for the basestation to process any of the minute-timed messages
-   */ 
-  if (sendstationreport) {
-    
-    add_alarm_in_ms(25000, station_report_callback, NULL, false);
-    sendstationreport = 0;
+   */
+  if (stationdata.send_station_report)
+  {
 
+    add_alarm_in_ms(25000, station_report_callback, NULL, false);
+    stationdata.send_station_report = 0;
   }
 }
 
-int64_t station_report_callback(alarm_id_t id, void *user_data) {
-    stationReport sr;
-    sr = format_station_report();
-    rak811_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
-    return 0;
+int64_t station_report_callback(alarm_id_t id, void *user_data)
+{
+  stationReport sr;
+
+  sr = format_station_report();
+
+  // next station message to rak11 format
+
+  rak811_lorawan_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
+
+  return 0;
 }
 
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
@@ -431,38 +425,23 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
   weatherReport sm;
 
   sm = format_weather_report(temperature,
-                             humidity,
-                             pressure,
-                             mslp,
-                             current_wind,
-                             max_gust,
-                             averages2m,
-                             gust10max,
-                             rainToday,
-                             rain_1h,
-                             rainSinceLast);
+                              humidity,
+                              pressure,
+                              mslp,
+                              current_wind,
+                              max_gust,
+                              averages2m,
+                              gust10max,
+                              rainToday,
+                              rain_1h,
+                              rainSinceLast);
 
   // next station message to rak11 format
 
   rainSinceLast = 0; // rain since last report (deprecated)
 
-#ifdef DEBUG
-  printf("... csv: %s\n", buffer);
-#endif
-
-  /* If the RAK811 modem is connected, add the required control sequences
-     * otherwise just push the data to the UART - for testing
-     * */
-
-#ifdef RAK811
-  rak811_put_hex((char *)&sm, sizeof(weatherReport)); // treat the structure as bytes
-#else
-  uart_puts(UART_ID, buffer);
-#endif
-
-#ifdef TRACE
-  printf("< report_weather\n");
-#endif
+  rak811_lorawan_put_hex((char *)&sm, sizeof(weatherReport)); // treat the structure as bytes
+  
 }
 
 wind calc_average_wind(volatile const wind readings[], uint entries)
@@ -604,15 +583,33 @@ void set_real_time_clock()
   // currently just setting this for development... will
   // be called from timesignal from UART
   //
-  datetime_t t = {.year = DEFAULT_YYYY,
-                  .month = DEFAULT_MON,
-                  .day = DEFAULT_DD,
-                  .dotw = DEFAULT_DOTW,
-                  .hour = DEFAULT_HH,
-                  .min = DEFAULT_MM,
-                  .sec = DEFAULT_SS};
+
+  datetime_t t;
+
+#ifdef DS3231
+
+  i2c_init(I2C_PORT, 100 * 1000);
+  gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+  gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+  gpio_pull_up(I2C_SDA);
+  gpio_pull_up(I2C_SCL);
+
+  t = ds3231ReadTime();
+
+#else
+
+  t.year = DEFAULT_YYYY;
+  t.month = DEFAULT_MON;
+  t.day = DEFAULT_DD;
+  t.dotw = DEFAULT_DOTW;
+  t.hour = DEFAULT_HH;
+  t.min = DEFAULT_MM;
+  t.sec = DEFAULT_SS;
+
+#endif
 
   rtc_set_datetime(&t);
+
 #ifdef DEBUG
   printf("...Time set\n");
   printf("...RTC is: %i-%i-%i %02i:%02i:%02i\n",
@@ -667,11 +664,12 @@ void setup_station_data()
   stationdata.altitude = 181; // for testing!
   stationdata.latitude = 0;
   stationdata.longitude = 0;
+  stationdata.network_status = NETWORK_SYSTEM_BOOTING;
 
 #ifdef TRACE
   printf("< setup_station_data\n");
 #endif
-   
+
   return;
 }
 
@@ -711,16 +709,30 @@ float adjust_pressure(int32_t pressure, int32_t altitude, float temperature)
   return pressure_corrected;
 }
 
+bool core0_led_timer_callback(struct repeating_timer *t)
+{
+  led_on(CORE0_LED);
 
-
-bool core0_led_timer_callback(struct repeating_timer *t) {
-    led_on(CORE0_LED);
-    
-    add_alarm_in_ms(LED_FLASH, core0_led_alarm_callback, NULL, false);
-    return true;
+  add_alarm_in_ms(LED_FLASH, core0_led_alarm_callback, NULL, false);
+  return true;
 }
-int64_t core0_led_alarm_callback(alarm_id_t id, void *user_data) {
-    led_off(CORE0_LED);
-    // Can return a value here in us to fire in the future
-    return 0;
+int64_t core0_led_alarm_callback(alarm_id_t id, void *user_data)
+{
+  led_off(CORE0_LED);
+  // Can return a value here in us to fire in the future
+  return 0;
+}
+
+void open_uart(void)
+{
+
+  uart_init(UART_ID, BAUD_RATE);
+  uart_set_translate_crlf(UART_ID, false); // don't translate cr to lf
+
+  gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+  gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+  uart_set_hw_flow(UART_ID, false, false);
+  uart_set_fifo_enabled(UART_ID, true);
+
+  return;
 }

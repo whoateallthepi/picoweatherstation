@@ -100,6 +100,16 @@ int rak811_lorawan_join(void)
     counter++;
   } while ((counter < RAK811_JOIN_ATTEMPTS) && (join_response != 0));
 
+  if (join_response != 0) {
+      stationdata.network_status = NETWORK_DOWN;
+      led_double_flash(TX_LED);
+    }
+    else
+    {
+      stationdata.network_status = NETWORK_UP;
+      led_flash3_leds(BOOT_LED, TX_LED, RX_LED);
+    }
+
   return join_response; // Zero = success
 }
 
@@ -132,6 +142,8 @@ int rak811_command(const char *command, char *response, int response_size, int w
   char x;
   command_response_ptr = command_response;
   
+  // Will always get omething from modem - hopefully OK, but maybe an error
+
   do 
   {
     *command_response_ptr = uart_getc(UART_ID);
@@ -148,26 +160,23 @@ int rak811_command(const char *command, char *response, int response_size, int w
 
   // Keep checking the UART for a few seconds - in case there is downlonk data to follow 
 
-  uint64_t end_wait = (time_us_64() + (1000 * RAK811_DOWNLINK_WAIT));
-  do 
+  if (uart_is_readable_within_us(UART_ID, (1000 * RAK811_DOWNLINK_WAIT)))
   {
-    if (uart_is_readable(UART_ID)) break;
-  } while ( time_us_64() < end_wait);
+    do
+    { // Read the downlink into same buffer if it is there
+      *command_response_ptr = uart_getc(UART_ID);
+      busy_wait_us(200); // slow me down!
+      command_response_ptr++;
+      chars_rx++;
+      if (chars_rx >= RX_BUFFER_SIZE)
+      {
+        printf("...ERROR: Input buffer overload\n");
+        assert(chars_rx >= RX_BUFFER_SIZE);
+        break;
+      }
+    } while (uart_is_readable(UART_ID));
+  }  
 
-  while (uart_is_readable(UART_ID)) // Read downlink into same buffer if it is there
-  {
-     *command_response_ptr = uart_getc(UART_ID);
-    busy_wait_us(200); // slow me down!
-    command_response_ptr++;
-    chars_rx++;
-    if (chars_rx >= RX_BUFFER_SIZE)
-    {
-      printf("...ERROR: Input buffer overload\n");
-      assert(chars_rx >= RX_BUFFER_SIZE);
-      break;
-    }
-  }
- 
   *(command_response_ptr) = '\0'; // terminate the string
 
   command_response_ptr = command_response;
@@ -184,7 +193,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
     }
     // Check for success response from at+join which is 'OK Join Success\r\n'
 
-    if (strncmp(command_response, JOIN_SUCCESS, response_size) == 0)
+    if (strncmp(command_response, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) == 0)
     {
       strncpy(response, command_response, response_size);
       return 0;
@@ -210,7 +219,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
     strncpy(response, command_response, response_size); // copy error message - should be ERROR nn so 8 char max
      
     char *not_used;
-    int error_num = strtol(command_response+strlen(MODEM_ERROR), &not_used, 2);
+    int error_num = strtol(command_response+strlen(MODEM_ERROR), &not_used, 10); 
     if (error_num == 0)
       error_num = -1;
     return error_num; // hopefully this is the error number!
@@ -278,9 +287,15 @@ void rak811_lorawan_put_hex(char *data, int length)
   uint8_t chars_rx = 0;
   int command_response = 0;
 
+  // check network status - if we haven't joined / error tate - try rejoining
+
+  if (stationdata.network_status != NETWORK_UP) rak811_lorawan_join();
+
   snprintf(tx_buffer, TX_BUFFER_SIZE, SEND_LORAWAN, data, "\r\n");
 
   led_flash(TX_LED);
+  
+  // Will try uplink anyway - without testing network status. Maybe add a further check here?
   command_response = rak811_command(tx_buffer, response, RX_BUFFER_SIZE, RAK811_SEND_WAIT);
   if ( command_response != 0) led_double_flash(TX_LED);
 }
@@ -315,6 +330,11 @@ void rak811_lorawan_process_downlink(char *message)
       break;
     case 202:
       stationdata.send_station_report = 1; // Send a 101 message  to confirm at next opportunity
+    case 203:
+      // Reboot
+      software_reset();
+      
+
     default:
       led_flash2_leds (TX_LED, RX_LED); // Flash an error 
     }

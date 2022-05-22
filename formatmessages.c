@@ -13,14 +13,11 @@
 
 extern stationData stationdata;
 
-messageHeader format_message_header (char messagetype) {
+messageHeaderOut format_message_header (char messagetype) {
     
-    messageHeader mh;
+    messageHeaderOut mh;
     
     sprintf(mh.messagetype, "%x", messagetype);
-    
-    //mh.messagetype = messagetype;
-    memcpy(&mh.hardwareID, stationdata.hardwareID, HARDWARE_ID_LENGTH);
     
     datetime_t current_time;
     rtc_get_datetime(&current_time);

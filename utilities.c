@@ -4,8 +4,15 @@
 #include <time.h>
 #include "hardware/gpio.h"
 #include "pico/stdlib.h"
+#include "hardware/watchdog.h"
 
 #include "constants.h"
+
+void software_reset()
+{
+    watchdog_enable(1, 1);
+    while(1);
+}
 
 int float_to_int(float in, float decimal_places)
 {
@@ -95,7 +102,7 @@ float radians_to_degrees(float radians)
 #endif
 }
 
-int32_t hex2int32(char * hex)
+int32_t hex2int32(char *hex)
 {
     // takes 8 hex digit and convert to an int32
     // currently no validation
@@ -110,7 +117,7 @@ int32_t hex2int32(char * hex)
     return value;
 }
 
-int16_t hex2int16(char * hex)
+int16_t hex2int16(char *hex)
 {
     // takes 4 hex digits and convert to an int16
 
@@ -124,7 +131,7 @@ int16_t hex2int16(char * hex)
     return value;
 }
 
-int hex2int(char * hex)
+int hex2int(char *hex)
 {
     // takes 2 hex digits and convert to an int
     int value = 0;
@@ -178,37 +185,101 @@ int getNum(char ch)
 }
 void setup_led(uint led)
 {
-  gpio_init(led);
-  gpio_set_dir(led, GPIO_OUT);
-  gpio_put(led, 0);
-  return;
+    gpio_init(led);
+    gpio_set_dir(led, GPIO_OUT);
+    gpio_put(led, 0);
+    return;
 }
 
 void led_on(uint led)
 {
-  gpio_put(led, 1);
-  return;
+    gpio_put(led, 1);
+    return;
 }
 
 void led_off(uint led)
 {
-  gpio_put(led, 0);
-  return;
+    gpio_put(led, 0);
+    return;
 }
 
-void double_flash(uint led) {
+void led_flash(uint led)
+{
     led_off(led);
     led_on(led);
-    busy_wait_ms(LED_FLASH);
+    busy_wait_ms(ERROR_FLASH);
+    led_off(led);
+}
+
+
+void led_double_flash(uint led)
+{
+    led_off(led);
+    led_on(led);
+    busy_wait_ms(ERROR_FLASH);
     led_off(led);
     busy_wait_ms(100);
     led_on(led);
-    busy_wait_ms(LED_FLASH);
+    busy_wait_ms(ERROR_FLASH);
     led_off(led);
 }
-int bytes_compare (const char * bytes1, const char * bytes2, const int bytes) {
-    for (int x=0; x < bytes; x ++) {
-        if (bytes1[x] != bytes2[x]) return 0;
+
+void led_repeat_flash(uint led)
+{
+
+    while (1)
+    {
+        led_on(led);
+        busy_wait_ms(ERROR_FLASH);
+        led_off(led);
+        busy_wait_ms(ERROR_FLASH / 2);
+    }
+}
+
+void led_repeat_two_leds_alternate(uint led1, uint led2)
+{
+    led_off(led1);
+    led_off(led2);
+
+    while (1)
+    {
+        led_on(led1);
+        busy_wait_ms(ERROR_FLASH / 2);
+        led_off(led1);
+        busy_wait_ms(LED_GAP);
+        led_on(led2);
+        busy_wait_ms(ERROR_FLASH / 2);
+        led_off(led2);
+        busy_wait_ms(LED_GAP);
+    }
+}
+
+void led_flash2_leds (uint led1, uint led2)
+{
+    led_on(led1);
+    led_on(led2);
+    busy_wait_ms(LED_FLASH);
+    led_off(led1);
+    led_off(led2);
+}
+
+void led_flash3_leds (uint led1, uint led2, uint led3)
+{
+    led_on(led1);
+    led_on(led2);
+    led_on(led3);
+    busy_wait_ms(LED_FLASH);
+    led_off(led1);
+    led_off(led2);
+    led_off(led3);
+}
+
+int bytes_compare(const char *bytes1, const char *bytes2, const int bytes)
+{
+    for (int x = 0; x < bytes; x++)
+    {
+        if (bytes1[x] != bytes2[x])
+            return 0;
     }
     return 1;
 }

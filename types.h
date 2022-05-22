@@ -15,7 +15,9 @@ typedef struct {
     int8_t timezone; //  
     float latitude; 
     float longitude; // Lat long eg 53.27044,-1.62351
-    int32_t altitude; } stationData;
+    int32_t altitude; 
+    int8_t network_status; 
+    int8_t send_station_report;} stationData;
     
 /*typedef struct {
     char messagetype;
@@ -47,12 +49,11 @@ typedef struct {
     
 typedef struct {
     char messagetype [2];
-    char hardwareID [HARDWARE_ID_LENGTH - 1]; // no null needed
-    char timestamp [8]; 
-    char timezone [4]; } messageHeader; // now an epoch time
-    
+    char timestamp [8]; // epoch time
+    char timezone [4]; } messageHeaderOut; 
+
 typedef struct {
-    messageHeader header;
+    messageHeaderOut header;
     char wind_dir [4];
     char wind_speed [4];
     char wind_gust [4];
@@ -71,7 +72,7 @@ typedef struct {
     char eos; } weatherReport;    // end of string char
 
 typedef struct {
-    messageHeader header;
+    messageHeaderOut header;
     char latitude [8];
     char longitude [8];
     char altitude [4];
@@ -80,7 +81,6 @@ typedef struct {
 // ==================== incoming mesages =========================
 
 typedef struct {
-    char timestamp [8];
     char timezone [4]; } timeMessage200;
     
 typedef struct {
@@ -95,7 +95,6 @@ typedef union {
     
 typedef struct { 
     char messagetype [2];
-    char hardwareID [HARDWARE_ID_LENGTH - 1]; // no null needed
     incomingData incomingdata;
     char eos; } incomingMessage;
         

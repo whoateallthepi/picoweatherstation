@@ -5,6 +5,9 @@ The bit where you are hoping for some helpful installation instructions. At the 
 This is not an out-the-box solution. You are going to need to do a bit of work to get up and running. A soldering iron is essential and there will be problems to solve. The below is as much for my benefit as anyone - so I can remember how this works next time it breaks.
 *Tom Cooper*
 January 2022
+### Out of date
+The readme is now out of date as the code has been redeveloped to use lorawan (the Things Network) rather than p2p. Update forthcoming!
+
 ## Overview
 The code is a functioning weather station Pico 'head end' deisgned to report wind speeds and direction, rainfall, barometric pressure, humidity and temperature at a chosen report interval.
 The station also keep a handful of daily totals (such as rainfall).

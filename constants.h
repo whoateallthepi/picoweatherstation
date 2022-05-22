@@ -27,10 +27,18 @@
 #define BOOT_LED_FLASH 1000000 // How long to flash the boot LED
 #define LED_FLASH 250 // how brief is the flash 1000000 = 1s
 #define ERROR_FLASH 500 // Used to report an error 1000 = 1s
+#define LED_GAP 200 // Gap between alternate flashes of two LEDS 1000=1s
 #define CORE0_LED_INTERVAL 10000000 // every 10 seconds
 
 #define RX_BUFFER_SIZE 550 // in bytes
 #define TX_BUFFER_SIZE 300 // in bytes - review this
+
+#define NETWORK_SYSTEM_BOOTING 0
+#define NETWORK_UP 1
+#define NETWORK_DOWN 2
+#define NETWORK_INITIALISING 3
+#define NETWORK_MODEM_ERROR 4
+ 
 
 #define PI 3.14159265
 
@@ -42,7 +50,7 @@
 #define WINDCLICK 2.4 // 1 click per second = 2.4km/h
 #define DELIM ";"
 
-#define REPORTING_FREQUENCY 5 // in minutes
+#define REPORTING_FREQUENCY 10 // in minutes
 
 // Default start for RTC
 #define DEFAULT_YYYY 2000

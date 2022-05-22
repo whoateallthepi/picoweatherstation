@@ -52,7 +52,7 @@ int bme280_initialise (void) {
     write_register(0xF2, 0x1); // Humidity oversampling register - going for x1
     write_register(0xF4, 0x27);// Set rest of oversampling modes and run mode to normal
     
-    return 1; // maybe add some error checks
+    return 0; // maybe add some error checks
 }
 
 int bme280_fetch (int32_t * humidity, int32_t * pressure, int32_t  * temperature) {
