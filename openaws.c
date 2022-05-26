@@ -81,7 +81,7 @@ Total rain over the day
 stationData stationdata;
 
 // These three are continuously updated (10s) by core1_processing
-uint32_t temperature;
+int32_t temperature;
 uint32_t pressure;
 uint32_t humidity;
 float decimal_temperature;
@@ -93,14 +93,6 @@ int sendstationreport = 0; // set to force main loop to ping out a station statu
 volatile float rainHour[60];
 volatile float rainToday = 0;
 volatile float rainSinceLast = 0;
-
-// record time of incoming messages for time-critical functions
-// ie - setting the clock
-
-volatile uint32_t UART_RX_interrupt_time = 0;
-
-uint8_t RX_buffer[RX_BUFFER_SIZE];
-volatile uint8_t *RX_buffer_pointer = RX_buffer;
 
 // == counters and totals - maintained by core1_processing =============
 
@@ -233,41 +225,6 @@ int main(void)
         core0_led_state = 1;
       }
     }
-
-#ifdef DEBUG
-    printf("....UART_RX_interrupt_time: %lld\n", UART_RX_interrupt_time);
-#endif
-
-    /*
-    if (UART_RX_interrupt_time != 0)
-    {
-      led_on(RX_LED);
-      uint32_t time_since_interrupt;
-      // the 32 bit timer wraps around every 35 minutes so allow for this
-      if (now >= UART_RX_interrupt_time) time_since_interrupt = now - UART_RX_interrupt_time;
-      else time_since_interrupt = (UINT32_MAX - UART_RX_interrupt_time) + now + 1;
-      
-      if (!RAK811 || (time_since_interrupt > RAK811_RX_DELAY))
-      {
-#ifdef DEBUG
-        printf("....time since interrupt: %lld\n", time_since_interrupt);
-        printf("... processing rx interrupt\n");
-        printf("... incoming message: %s\n", RX_buffer);
-#endif
-        led_off(RX_LED);
-        time_message_received = UART_RX_interrupt_time; // save for later
-        UART_RX_interrupt_time = 0; // reset the interrupt time
-        strncpy(RX_buffer_copy, RX_buffer, RX_BUFFER_SIZE);
-
-        memset(RX_buffer, '\0', RX_BUFFER_SIZE); // clear RX buffer
-
-        RX_buffer_pointer = RX_buffer; // Reset the pointer
-                                       // ready for next msg
-
-        uart_process_RX_message(RX_buffer_copy, time_message_received);
-      }
-    } 
-    */
 
   } // tight loop
 } // main
@@ -673,42 +630,7 @@ void setup_station_data()
   return;
 }
 
-float adjust_pressure(int32_t pressure, int32_t altitude, float temperature)
-{
-  float pressure_mb;
-  float pressure_corrected;
-
-#ifdef TRACE
-  printf("> adjust_pressure\n");
-#endif
-
-  // Lifted from Nathan Seidle's C code for the Electric Imp - thanks
-
-  pressure_mb = pressure / 100; // pressure is now in millibars
-  /*
-    part1 = pressure_mb - 0.3 # Part 1 of formula
-    part2 = 8.42288 / 100000.0
-    part3 = math.pow((pressure_mb - 0.3), 0.190284);
-    part4 = altitude / part3
-    part5 = (1.0 + (part2 * part4))
-    part6 = math.pow(part5, (1.0/0.190284))
-    bar_corrected = part1 * part6 # Output is now in adjusted millibars
-    */
-  pressure_corrected = pressure_mb + ((pressure_mb * 9.80665 * altitude) / (287 * (273 + temperature + altitude / 400)));
-
-/* # lifted from :  https://gist.github.com/cubapp/ (information only)
-
-    in standard places (hasl from 100-800 m, temperature from -10 to 35) 
-    is the coeficient something close to hasl/10, meaning simply 
-    a2ts is about  aap + hasl/10
-    bar_corrected = pressure_mb / pow(1.0 - altitude/44330.0, 5.255)
-    */
-#ifdef TRACE
-  printf("< adjust_pressure\n");
-#endif
-  return pressure_corrected;
-}
-
+/* Currently unused 
 bool core0_led_timer_callback(struct repeating_timer *t)
 {
   led_on(CORE0_LED);
@@ -722,7 +644,7 @@ int64_t core0_led_alarm_callback(alarm_id_t id, void *user_data)
   // Can return a value here in us to fire in the future
   return 0;
 }
-
+*/
 void open_uart(void)
 {
 

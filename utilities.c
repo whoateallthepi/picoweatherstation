@@ -283,3 +283,40 @@ int bytes_compare(const char *bytes1, const char *bytes2, const int bytes)
     }
     return 1;
 }
+
+float adjust_pressure(int32_t pressure, int32_t altitude, float temperature)
+// Adjusts a barametric pressure to sea level
+{
+  float pressure_mb;
+  float pressure_corrected;
+
+#ifdef TRACE
+  printf("> adjust_pressure\n");
+#endif
+
+  // Lifted from Nathan Seidle's C code for the Electric Imp - thanks
+
+  pressure_mb = pressure / 100; // pressure is now in millibars
+  /*
+    part1 = pressure_mb - 0.3 # Part 1 of formula
+    part2 = 8.42288 / 100000.0
+    part3 = math.pow((pressure_mb - 0.3), 0.190284);
+    part4 = altitude / part3
+    part5 = (1.0 + (part2 * part4))
+    part6 = math.pow(part5, (1.0/0.190284))
+    bar_corrected = part1 * part6 # Output is now in adjusted millibars
+    */
+  pressure_corrected = pressure_mb + ((pressure_mb * 9.80665 * altitude) / (287 * (273 + temperature + altitude / 400)));
+
+/* # lifted from :  https://gist.github.com/cubapp/ (information only)
+
+    in standard places (hasl from 100-800 m, temperature from -10 to 35) 
+    is the coeficient something close to hasl/10, meaning simply 
+    a2ts is about  aap + hasl/10
+    bar_corrected = pressure_mb / pow(1.0 - altitude/44330.0, 5.255)
+    */
+#ifdef TRACE
+  printf("< adjust_pressure\n");
+#endif
+  return pressure_corrected;
+}

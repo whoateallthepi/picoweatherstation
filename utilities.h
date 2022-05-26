@@ -12,6 +12,8 @@ int32_t float_to_int32(float in, float decimal_places);
 time_t rtc_to_epoch (datetime_t rtc, int8_t timezone);
 void epoch_to_rtc (time_t epoch, datetime_t * rtc);
 float radians_to_degrees (float radians);
+float adjust_pressure (int32_t pressure, int32_t altitude, float temperature);
+
 
 int getNum(char ch);
 int32_t hex2int32 (char * hex);

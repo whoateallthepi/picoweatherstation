@@ -158,27 +158,42 @@ at+send=lora:2:1234567890ABFF # try sending some data
 |          |                            | void set_real_time_clock(void) | |
 |          |                            | void open_uart(void) | |
 |          |                            | void launch_core1(void) | |
-|          |                            | int get_sector (uint16_t adc) |  |
 |          |                            | wind calc_average_wind(volatile const wind readings[], uint entries) | |
-|          |                            | float radians_to_degrees (float radians) | |
 |          |                            | void midnight_reset (void) | |
 |          |                            | void report_weather(int32_t humidity, int32_t pressure, int32_t temperature) | |
-|          |                            | float adjust_pressure (int32_t pressure, int32_t altitude, float temperature) | |
 |          |                            | void minute_processing (void) | | 
 | bme280.c | Initialise and control sensor| | |
 | core1_processing.c | Collects weather readings | void core1_process (void) | Entry point | 
-|          |                            |
-|          |                            |
-|          |                            |
-|          |                            |
+|          |                            |void gpio_callback(uint gpio, uint32_t events)| callback for rain and wind IRQ|
+|          |                            |void get_wind_readings (void)| gets current readins and updates global data|
+|          |                            |float get_wind_direction() ||
+|          |                            |int get_sector (uint16_t adc)| Part of wind direction processing|
+|          |                            |static inline uint64_t raw_time_64(void)| Speedy, imperfect, clock read for IRQ debouncing |
+|          |                            |void second_processing(void)| Every second - updates arrays and counters|
+| downlink.c | Handles incoming mesages|  void set_timezone(incomingMessage *data) |
+|          |                            | void set_station_data(incomingMessage *data) | 
+|formatmesages.c| Formats uplink messages for transmisssion | weatherReport format_weather_report (..) | For params see header|
+|          |                            | stationReport format_station_report () | |
+|rak811_lorawan.c          | Handles all the lora comms   | int rak811_lorawan_initialise(void) | All those of type int return 0 for success |
+|          |                            |int rak811_lorawan_join(void)| Handles the 'at+join' sequencec plu error and retries|
+|          |                            | int rak811_command(const char *command, char *response, int response_size, int wait_ms) | Handles all the commands to RAK811. |
+|          |                            | int rak811_command(const char *command, char *response, int response_size, int wait_ms)| Reads responses from modem and returns error code from eg ERROR 99 mesages|
+|          |                            |void rak811_lorawan_put_hex(char *data, int length)| Used to put a hex sequence to modem eg at+send=lora:2:64....|
+|          |                            |void rak811_lorawan_process_downlink(char *message) | Extracts info from uncoming messages|
+|          |                            |int rak811_lorawan_parse_incoming(char *data, incomingMessage *im, int32_t *port, int32_t *RSSI, int32_t *SNR)| Turns incoming data string into something we can process.|
+| utilities.c | Conversion of data types, calculations, LED actions etc                        | Procedures not listed - see headers |
 
-void core1_process (void);
-void setup_arrays();
-void gpio_callback(uint gpio, uint32_t events);
-void get_wind_readings (void);
-float get_wind_direction();
-int get_sector (uint16_t adc);
-uint64_t get_time(void);
-static inline uint64_t raw_time_64(void);
-//bool repeating_timer_callback_1s(struct repeating_timer *t); //every second
-void second_processing(void);
+## Global variables and data types ##
+Data structures are defined in types.h. Below are a few of the key file scope variables. Mostly these are updated by interrupts in core 1 (wind and rain) but are needed in core0 for weather reports. Note the **wind** data type contains a wind speed (km/h) and direction (radians).
+Currently temperature, humidity and pressure are updated in core0. In previus versions this was done in core1. However I've left these varaibles as file scope for now.
+
+| Name | Type | Notes |
+| ---- | ---- | ----- |
+|stationdata | stationData | Contains network status, timezone, altitude, latitude and longitude of station. Updated by message types 200 and 201 (station data) or by network errors (network status)|
+|rainHour| float[60] | Updated from core 1 IRQs. Read in core 0|
+|rainToday| float | Updated in core1 IRQs |
+| windspeed | wind[120] | Minutely wind speeds for at 2 hours |
+| gust10m | wind [10] | Peak winds in each of lat 10mins |
+| max_gust | wind | Daily max speed and direction. Reset at local midnight |
+| current_wind | wind | Latest wind speed and direction |
+| sendstationreport | int | setting this to 1 initiates a 101 (station data) uplink message on next cycle.| 
