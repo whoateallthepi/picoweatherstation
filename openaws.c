@@ -262,16 +262,33 @@ void minute_processing(void)
       }
     }
   }
-  /* If the sendstationreport flag is set (either above or because either message 200 or 201 
-   * has been received) kick off an alarm to do this in 25s time. This
-   * makes sure there is time for the basestation to process any of the minute-timed messages
-   */
-  if (stationdata.send_station_report)
+  else
   {
-
-    add_alarm_in_ms(25000, station_report_callback, NULL, false);
-    stationdata.send_station_report = 0;
+    /*This is executed every minute, except the minutes when a weather report is sent
+    *
+    * If the sendstationreport flag is set (either above or because either message 200 or 201 
+    * has been received) send it. This shouldn't clash with weather report processing, 
+    * but if REPORTING_FREQUENCY = 1, it will never execute
+    */
+    if (stationdata.send_station_report)
+    {
+      //add_alarm_in_ms(25000, station_report_callback, NULL, false);
+      stationdata.send_station_report = 0;
+      //busy_wait_ms(STATION_REPORT_DELAY);
+      report_station();
+    }
   }
+}
+
+void report_station (void) 
+{
+  stationReport sr;
+
+  sr = format_station_report();
+
+  // next station message to rak11 format
+
+  rak811_lorawan_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
 }
 
 int64_t station_report_callback(alarm_id_t id, void *user_data)
@@ -618,7 +635,7 @@ void setup_station_data()
 #endif
 
   stationdata.timezone = 0;
-  stationdata.altitude = 181; // for testing!
+  stationdata.altitude = 196; // for testing!
   stationdata.latitude = 0;
   stationdata.longitude = 0;
   stationdata.network_status = NETWORK_SYSTEM_BOOTING;

@@ -36,7 +36,7 @@ const char *MODEM_OK = "OK \r\n";
 const char *RAK811_RECVD = "at+recv="; // This is the start of a data message
 
 char RAK811_DATA_END[] = {0x0D, 0x0A, 0x00}; // This is how a RAK811
-                                              // incoming data message ends
+                                             // incoming data message ends
 
 extern int sendstationreport; // Set to 1 to force a downlink of station data
 
@@ -100,15 +100,16 @@ int rak811_lorawan_join(void)
     counter++;
   } while ((counter < RAK811_JOIN_ATTEMPTS) && (join_response != 0));
 
-  if (join_response != 0) {
-      stationdata.network_status = NETWORK_DOWN;
-      led_double_flash(TX_LED);
-    }
-    else
-    {
-      stationdata.network_status = NETWORK_UP;
-      led_flash3_leds(BOOT_LED, TX_LED, RX_LED);
-    }
+  if (join_response != 0)
+  {
+    stationdata.network_status = NETWORK_DOWN;
+    led_double_flash(TX_LED);
+  }
+  else
+  {
+    stationdata.network_status = NETWORK_UP;
+    led_flash3_leds(BOOT_LED, TX_LED, RX_LED);
+  }
 
   return join_response; // Zero = success
 }
@@ -127,9 +128,9 @@ int rak811_command(const char *command, char *response, int response_size, int w
   char *command_response_ptr;
   uint8_t chars_rx = 0;
 
-  memset(command_response,0, RX_BUFFER_SIZE); //to help me debug only
+  memset(command_response, 0, RX_BUFFER_SIZE); //to help me debug only
 
-  // clear the FIFO and ignore the data 
+  // clear the FIFO and ignore the data
 
   while (uart_is_readable(UART_ID))
   {
@@ -141,10 +142,10 @@ int rak811_command(const char *command, char *response, int response_size, int w
   //busy_wait_ms(wait_ms);
   char x;
   command_response_ptr = command_response;
-  
+
   // Will always get omething from modem - hopefully OK, but maybe an error
 
-  do 
+  do
   {
     *command_response_ptr = uart_getc(UART_ID);
     busy_wait_us(200); // slow me down!
@@ -158,7 +159,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
     }
   } while (uart_is_readable(UART_ID));
 
-  // Keep checking the UART for a few seconds - in case there is downlonk data to follow 
+  // Keep checking the UART for a few seconds - in case there is downlonk data to follow
 
   if (uart_is_readable_within_us(UART_ID, (1000 * RAK811_DOWNLINK_WAIT)))
   {
@@ -175,7 +176,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
         break;
       }
     } while (uart_is_readable(UART_ID));
-  }  
+  }
 
   *(command_response_ptr) = '\0'; // terminate the string
 
@@ -186,7 +187,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
     /* So far so good, we are working as a Class A lorawan device, so we may get and OK from the modem, 
      * plus an incoming message eg "OK \r\nat+recv=0,-18,5,0\r\n" o check for this
     */
-    if (strlen(command_response) < 6) 
+    if (strlen(command_response) < 6)
     { // This is just an 'OK \r\n'
       strncpy(response, command_response, response_size);
       return 0;
@@ -201,15 +202,15 @@ int rak811_command(const char *command, char *response, int response_size, int w
 
     // This looks like an incoming message - check "OK \r\nat+recv=0,-18,5,0
 
-    if ( strncmp(command_response, INCOMING_DATA, strlen(INCOMING_DATA)) != 0)
-    {  
+    if (strncmp(command_response, INCOMING_DATA, strlen(INCOMING_DATA)) != 0)
+    {
       // Something odd here
       strncpy(response, command_response, response_size);
-      return -2;    
+      return -2;
     }
 
     // OK we have data - deal with it here (consider returning a response and dealing in main process?)
-    rak811_lorawan_process_downlink(command_response+strlen(MODEM_OK));
+    rak811_lorawan_process_downlink(command_response + strlen(MODEM_OK));
     return 0;
   }
   // Now almost certainly in an error state try and get the error number and return that...
@@ -217,19 +218,18 @@ int rak811_command(const char *command, char *response, int response_size, int w
   if (strncmp(command_response, MODEM_ERROR, strlen(MODEM_ERROR)) == 0)
   {
     strncpy(response, command_response, response_size); // copy error message - should be ERROR nn so 8 char max
-     
+
     char *not_used;
-    int error_num = strtol(command_response+strlen(MODEM_ERROR), &not_used, 10); 
+    int error_num = strtol(command_response + strlen(MODEM_ERROR), &not_used, 10);
     if (error_num == 0)
       error_num = -1;
     return error_num; // hopefully this is the error number!
   }
-  
+
   // Not sure how we got here - return -3
   strncpy(response, command_response, response_size);
   return -3;
 }
-
 
 int rak811_read_response(char *data, uint data_size)
 {
@@ -289,15 +289,17 @@ void rak811_lorawan_put_hex(char *data, int length)
 
   // check network status - if we haven't joined / error tate - try rejoining
 
-  if (stationdata.network_status != NETWORK_UP) rak811_lorawan_join();
+  if (stationdata.network_status != NETWORK_UP)
+    rak811_lorawan_join();
 
   snprintf(tx_buffer, TX_BUFFER_SIZE, SEND_LORAWAN, data, "\r\n");
 
   led_flash(TX_LED);
-  
+
   // Will try uplink anyway - without testing network status. Maybe add a further check here?
   command_response = rak811_command(tx_buffer, response, RX_BUFFER_SIZE, RAK811_SEND_WAIT);
-  if ( command_response != 0) led_double_flash(TX_LED);
+  if (command_response != 0)
+    led_double_flash(TX_LED);
 }
 
 void rak811_lorawan_process_downlink(char *message)
@@ -312,10 +314,10 @@ void rak811_lorawan_process_downlink(char *message)
 
   int x; // used to scan the buffer
 
-  chars_received = rak811_lorawan_parse_incoming(message, &im,  &lora_port, &rssi, &snr);
+  chars_received = rak811_lorawan_parse_incoming(message, &im, &lora_port, &rssi, &snr);
 
-  if (chars_received != 0) 
-  {  
+  if (chars_received != 0)
+  {
     type_i = hex2int(im.messagetype);
 
     switch (type_i)
@@ -330,13 +332,14 @@ void rak811_lorawan_process_downlink(char *message)
       break;
     case 202:
       stationdata.send_station_report = 1; // Send a 101 message  to confirm at next opportunity
+      break;
     case 203:
       // Reboot
       software_reset();
-      
+      break;
 
     default:
-      led_flash2_leds (TX_LED, RX_LED); // Flash an error 
+      led_flash2_leds(TX_LED, RX_LED); // Flash an error
     }
   }
 }
@@ -380,8 +383,9 @@ int rak811_lorawan_parse_incoming(char *data, incomingMessage *im, int32_t *port
   *SNR = atoi(snr);
   char_count = strtok(NULL, ":");
   char_count_int = atoi(char_count);
-  
-  if (char_count_int == 0) return 0; // This is probably just an 'ACK' from the network - ignore
+
+  if (char_count_int == 0)
+    return 0; // This is probably just an 'ACK' from the network - ignore
 
   hex_data = strtok(NULL, RAK811_DATA_END); // messages are terminated by CR NL
 

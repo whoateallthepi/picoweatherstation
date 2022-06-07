@@ -14,6 +14,7 @@ wind calc_average_wind(volatile const wind readings[], uint entries);
 
 void midnight_reset (void);                      // Reporting
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature);
+void report_station(void);
 
 void minute_processing (void);
 
