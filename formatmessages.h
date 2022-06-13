@@ -5,7 +5,7 @@
 #include "pico/stdlib.h"
 #include "types.h"
 
-messageHeaderOut format_message_header (char messagetype);
+messageHeaderOut format_message_header (void);
 
 /*
  * station100Message format_station_message (messageHeader mh, 

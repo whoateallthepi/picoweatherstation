@@ -48,7 +48,6 @@ typedef struct {
 */    
     
 typedef struct {
-    char messagetype [2];
     char timestamp [8]; // epoch time
     char timezone [4]; } messageHeaderOut; 
 
@@ -94,7 +93,7 @@ typedef union {
     timeMessage200 timemessage; } incomingData;
     
 typedef struct { 
-    char messagetype [2];
+    //char messagetype [2];
     incomingData incomingdata;
     char eos; } incomingMessage;
         

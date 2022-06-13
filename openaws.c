@@ -288,20 +288,7 @@ void report_station (void)
 
   // next station message to rak11 format
 
-  rak811_lorawan_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
-}
-
-int64_t station_report_callback(alarm_id_t id, void *user_data)
-{
-  stationReport sr;
-
-  sr = format_station_report();
-
-  // next station message to rak11 format
-
-  rak811_lorawan_put_hex((char *)&sr, sizeof(stationReport)); // treat the structure as bytes
-
-  return 0;
+  rak811_lorawan_put_hex((char *)&sr, sizeof(stationReport), 101); // treat the structure as bytes
 }
 
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
@@ -414,7 +401,7 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
 
   rainSinceLast = 0; // rain since last report (deprecated)
 
-  rak811_lorawan_put_hex((char *)&sm, sizeof(weatherReport)); // treat the structure as bytes
+  rak811_lorawan_put_hex((char *)&sm, sizeof(weatherReport), 100); // treat the structure as bytes
   
 }
 

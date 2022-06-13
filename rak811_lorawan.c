@@ -24,7 +24,7 @@ const char *SET_DEVICE_EUI = "at+set_config=lora:dev_eui:%s\r\n";
 const char *SET_APP_EUI = "at+set_config=lora:app_eui:%s";
 const char *SET_APP_KEY = "at+set_config=lora:app_key:%s";
 const char *RESTART = "at+set_config=device:restart\r\n";
-const char *SEND_LORAWAN = "at+send=lora:2:%s%s";
+const char *SEND_LORAWAN = "at+send=lora:%d:%s%s";
 const char *JOIN = "at+join\r\n";
 
 // Modem reponses
@@ -277,7 +277,7 @@ int rak811_read_response(char *data, uint data_size)
   }
 }
 
-void rak811_lorawan_put_hex(char *data, int length)
+void rak811_lorawan_put_hex(char *data, int length, int port)
 {
 
   char tx_buffer[TX_BUFFER_SIZE];
@@ -292,11 +292,11 @@ void rak811_lorawan_put_hex(char *data, int length)
   if (stationdata.network_status != NETWORK_UP)
     rak811_lorawan_join();
 
-  snprintf(tx_buffer, TX_BUFFER_SIZE, SEND_LORAWAN, data, "\r\n");
+  snprintf(tx_buffer, TX_BUFFER_SIZE, SEND_LORAWAN, port, data, "\r\n");
 
   led_flash(TX_LED);
 
-  // Will try uplink anyway - without testing network status. Maybe add a further check here?
+  // Will try uplink anyway - without re-checking network status. Maybe add a further test here?
   command_response = rak811_command(tx_buffer, response, RX_BUFFER_SIZE, RAK811_SEND_WAIT);
   if (command_response != 0)
     led_double_flash(TX_LED);
@@ -310,17 +310,13 @@ void rak811_lorawan_process_downlink(char *message)
   int32_t snr = 0;
   int32_t lora_port = 0;
 
-  int type_i; // will hold mesage type as an int
-
   int x; // used to scan the buffer
 
   chars_received = rak811_lorawan_parse_incoming(message, &im, &lora_port, &rssi, &snr);
 
-  if (chars_received != 0)
+  if (lora_port != 0) // If this is just a default reply, it comes in on port 0
   {
-    type_i = hex2int(im.messagetype);
-
-    switch (type_i)
+    switch (lora_port)
     {
     case 200:
       set_timezone(&im);

@@ -22,7 +22,7 @@ int rak811_lorawan_initialise(void);
 int rak811_lorawan_join(void);
 int rak811_command(const char *command, char *response, int response_size, int wait_ms);
 int rak811_read_response(char *data, uint data_size);
-void rak811_lorawan_put_hex(char *data, int length);
+void rak811_lorawan_put_hex(char *data, int length, int port);
 void rak811_lorawan_process_downlink(char *message);
 int rak811_lorawan_parse_incoming(char *data, incomingMessage *im, int32_t *port, int32_t *RSSI, int32_t *SNR);
 
