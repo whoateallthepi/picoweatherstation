@@ -39,7 +39,10 @@ weatherReport format_weather_report (
 stationReport format_station_report ();
 
 int64_t station_report_callback(alarm_id_t id, void *user_data);
-					  
+
+void format_int4 (char * buffer, int8_t input);
+void format_int8 (char * buffer, int8_t input);	
+void format_int12 (char * buffer, int16_t input);				  
 void format_int16 (char * buffer, int16_t input);
 void format_int32 (char * buffer, int32_t input);
 	

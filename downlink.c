@@ -17,19 +17,16 @@ extern stationData stationdata;
 void set_timezone(incomingMessage *data)
 {
 
-  int16_t timezone;
-
-  /* Message will look like: 
-     * c8|ffff\r\n
+    /* Message will look like: 
+     * ff\r\n
      * ^    ^            
-     * 200 timezone (here -1) 
+     * timezone (here -1) 
      * 
      * timezone is currently hours only - review
      * 
      */
 
-  timezone = hex2int16(data->incomingdata.timemessage.timezone);
-  stationdata.timezone = timezone; //note dropping digits here
+  stationdata.timezone = hex2int(data->incomingdata.timemessage.timezone);
 
   //if a clock is connected - update the pico board clock
 

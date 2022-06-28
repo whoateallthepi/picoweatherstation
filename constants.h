@@ -71,4 +71,12 @@
 								// UART interrupt on the pico.
 								// This needs tweaking by experiment (in millionths of a second)
 
+/* To reduce the lora payload, the following baseline values are used 
+ * to save space.
+*/ 
+
+#define BASELINE_TIME 1640995200 // 2022-01-01 00:00:00 GMT
+
+#define BASELINE_PRESSURE 90000 // This is in millibars with two implied decimals
+
 #endif

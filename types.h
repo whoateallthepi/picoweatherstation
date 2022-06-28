@@ -28,9 +28,7 @@ typedef struct {
     
 typedef struct {
     messageHeader header;
-    uint16_t wind_dir;
-    uint16_t wind_speed;
-    uint16_t wind_gust;
+    uint16_hex2int8(data->incomingdata.timemessage.timezone);t wind_gust;
     uint16_t wind_gust_dir;
     uint16_t wind_speed_avg2m;
     uint16_t wind_dir_avg2m;
@@ -48,26 +46,26 @@ typedef struct {
 */    
     
 typedef struct {
-    char timestamp [8]; // epoch time
-    char timezone [4]; } messageHeaderOut; 
+    char timestamp [8]; // seconds from BASELINE_TIME
+    char timezone [2]; } messageHeaderOut; 
 
 typedef struct {
     messageHeaderOut header;
-    char wind_dir [4];
+    char wind_dir [3]; // these are all numbers of hex chars eg
     char wind_speed [4];
     char wind_gust [4];
-    char wind_gust_dir [4];
+    char wind_gust_dir [3];
     char wind_speed_avg2m [4];
-    char wind_dir_avg2m [4];
+    char wind_dir_avg2m [3];
     char wind_gust_10m [4];
-    char wind_gust_dir_10m [4];
+    char wind_gust_dir_10m [3];
     char humidity [4];
     char temperature [4];
     char rain_1h [4];
     char rain_today [4]; 
     char rain_since_last [4];
-    char bar_uncorrected [8];
-    char bar_corrected [8]; 
+    char bar_uncorrected [4]; // Pressure from BASELINE_PRESSURE
+    char bar_corrected [4];  // Pressure from BASELINE_PRESSURE
     char eos; } weatherReport;    // end of string char
 
 typedef struct {
@@ -80,7 +78,7 @@ typedef struct {
 // ==================== incoming mesages =========================
 
 typedef struct {
-    char timezone [4]; } timeMessage200;
+    char timezone [1]; } timeMessage200;
     
 typedef struct {
     char latitude [8];

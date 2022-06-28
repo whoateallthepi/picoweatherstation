@@ -21,12 +21,13 @@ messageHeaderOut format_message_header (void) {
     rtc_get_datetime(&current_time);
     
     time_t ts = rtc_to_epoch(current_time, stationdata.timezone);
+
+    ts -= BASELINE_TIME;
     
-    itoa(ts,mh.timestamp,16);
     
-    format_int16(mh.timezone, stationdata.timezone);
+    format_int32(mh.timestamp,ts);
     
-    //itoa(stationdata.timezone, mh.timezone, 16);
+    format_int8(mh.timezone, stationdata.timezone); // Not sure if -ve timezones will work
     
     return mh;
 }
@@ -112,17 +113,25 @@ weatherReport format_weather_report (
     // For some reason temp is in hundredth of a degree
     format_int16(wr.humidity, float_to_int((humidity/1000), DEFAULT_DECIMAL_PLACES));
     //humidity is not %, for some reason
-    format_int32(wr.bar_uncorrected, float_to_int32((pressure/100), DEFAULT_DECIMAL_PLACES));
+    
+    int32_t bar_uncorrected = float_to_int32((pressure/100), DEFAULT_DECIMAL_PLACES);
+    bar_uncorrected -= BASELINE_PRESSURE;
+    format_int16(wr.bar_uncorrected, bar_uncorrected);
     // output in hPa
-    format_int32(wr.bar_corrected, float_to_int32(mslp, DEFAULT_DECIMAL_PLACES));
+    int32_t bar_corrected = float_to_int32(mslp, DEFAULT_DECIMAL_PLACES);
+    bar_corrected -= BASELINE_PRESSURE;
+    format_int16(wr.bar_corrected, bar_corrected);
+ 
     format_int16(wr.wind_speed, float_to_int(current_wind.speed, DEFAULT_DECIMAL_PLACES));
-    format_int16(wr.wind_dir, radians_to_degrees(current_wind.direction));
+    
+    format_int12(wr.wind_dir, radians_to_degrees(current_wind.direction));
+
     format_int16(wr.wind_gust, float_to_int(max_gust.speed, DEFAULT_DECIMAL_PLACES));
-    format_int16(wr.wind_gust_dir, radians_to_degrees(max_gust.direction));
+    format_int12(wr.wind_gust_dir, radians_to_degrees(max_gust.direction));
     format_int16(wr.wind_speed_avg2m, float_to_int(wind2maverage.speed, DEFAULT_DECIMAL_PLACES));
-    format_int16(wr.wind_dir_avg2m, radians_to_degrees(wind2maverage.direction));
+    format_int12(wr.wind_dir_avg2m, radians_to_degrees(wind2maverage.direction));
     format_int16(wr.wind_gust_10m, float_to_int(wind10mmax.speed, DEFAULT_DECIMAL_PLACES));
-    format_int16(wr.wind_gust_dir_10m, radians_to_degrees(wind10mmax.direction));
+    format_int12(wr.wind_gust_dir_10m, radians_to_degrees(wind10mmax.direction));
     format_int16(wr.rain_today, float_to_int(raintoday, DEFAULT_DECIMAL_PLACES));
     format_int16(wr.rain_1h, float_to_int(rain1h, DEFAULT_DECIMAL_PLACES));
     format_int16(wr.rain_since_last, float_to_int(rainsincelast, DEFAULT_DECIMAL_PLACES));
@@ -141,6 +150,44 @@ stationReport format_station_report () {
     sr.eos = '\0'; // Set up end of string to make it easier to use string functions later
     return sr;
 }
+
+void format_int4 (char * buffer, int8_t input) {
+    /* Take an int or uint and format as 1 hexadecimal characters
+     * dropping the extra bits...
+     * Basically this is sprintf, without the trailing \0
+     * WARNING - not tested with -ve numbers 
+    */ 
+    
+    char temp[5];
+    sprintf(temp, "%01x",input);
+    memcpy(buffer, temp, 1);
+    return;
+}
+
+void format_int8 (char * buffer, int8_t input) {
+    /* Take an int or uint and format as 2 hexadecimal characters
+     * Basically this is sprintf, without the trailing \0
+    */ 
+    
+    char temp[5];
+    sprintf(temp, "%02x",input);
+    memcpy(buffer, temp, 2);
+    return;
+}
+
+void format_int12 (char * buffer, int16_t input) {
+    /* Take an int or uint and format as 3 hexadecimal characters
+     * dropping the extra bits...
+     * Basically this is sprintf, without the trailing \0
+     * WARNING - not tested with -ve numbers 
+    */ 
+    
+    char temp[5];
+    sprintf(temp, "%03x",input);
+    memcpy(buffer, temp, 3);
+    return;
+}
+
 
 void format_int16 (char * buffer, int16_t input) {
     /* Take an int or uint and format as 4 hexadecimal characters
