@@ -81,7 +81,10 @@ void core1_process(void)
   // The ADC for wind direction
   adc_init();
   adc_gpio_init(WIND_DIR_GP); // makes sure no pullups etc
-  adc_select_input(WIND_DIR);
+  
+  // ADC for battery level
+  adc_gpio_init(BATTERY_LEVEL_GP);
+  
 
   lastSecond = time_us_64();
 
@@ -145,6 +148,10 @@ void second_processing()
 
     gust10m[minutes_10m].speed = 0.0;   // and wind gusts
     gust10m[minutes_10m].direction = 0; //
+
+    // Read battery voltage each minute. If this is overkill or
+    // causes batttery drain, reduce frequency
+    battery_level = get_voltage();
   }
   //return true;
 }
@@ -255,7 +262,7 @@ float get_wind_direction()
 #ifdef TRACE
   printf("> get_wind_direction\n");
 #endif
-
+  adc_select_input(WIND_DIR);
   uint16_t adc = adc_read();
 #ifdef DEBUG
   printf("... ADC raw value: 0x%03x\n", adc);
@@ -318,6 +325,14 @@ int get_sector(uint16_t adc)
 #ifdef TRACE
   printf("< get_sector\n");
 #endif
+}
+
+uint16_t get_voltage (void) 
+{
+  uint16_t voltage = 0;  
+  adc_select_input(BATTERY_LEVEL);
+  voltage = adc_read();
+  return voltage;
 }
 
 static inline uint64_t raw_time_64(void)

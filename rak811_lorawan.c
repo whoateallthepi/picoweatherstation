@@ -108,7 +108,7 @@ int rak811_lorawan_join(void)
   else
   {
     stationdata.network_status = NETWORK_UP;
-    led_flash3_leds(BOOT_LED, TX_LED, RX_LED);
+    led_flash3_leds(CORE0_LED, TX_LED, RX_LED);
   }
 
   return join_response; // Zero = success

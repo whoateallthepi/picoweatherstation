@@ -104,6 +104,8 @@ volatile wind max_gust = {.speed = 0, .direction = 0}; // daily max
 
 volatile wind current_wind = {.speed = 0, .direction = 0}; // latest
 
+volatile uint16_t battery_level; // updated via ADC in core1
+
 // =========================== main ====================================
 
 int main(void)
@@ -136,15 +138,18 @@ int main(void)
   printf("> main()\n");
 #endif
 
-  // Briefly flash the boot led to show we are starting OK
-  setup_led(BOOT_LED);
-  led_on(BOOT_LED);
-  busy_wait_us_32(BOOT_LED_FLASH);
-  led_off(BOOT_LED);
-
   setup_led(CORE0_LED);
   setup_led(TX_LED);
   setup_led(RX_LED);
+
+  // Briefly flash all leds to show we are starting OK
+  led_on(CORE0_LED);
+  led_on(TX_LED);
+  led_on(RX_LED);
+  busy_wait_us_32(BOOT_LED_FLASH);
+  led_off(CORE0_LED);
+  led_off(TX_LED);
+  led_off(RX_LED);
 
   //add_repeating_timer_ms(-CORE0_LED_INTERVAL, core0_led_timer_callback, NULL, &led0_timer);
 
@@ -158,7 +163,7 @@ int main(void)
   if (rak811_lorawan_initialise())
   {
     stationdata.network_status = NETWORK_MODEM_ERROR;
-    led_double_flash(BOOT_LED);
+    led_double_flash(RX_LED);
   }
   else
   {
@@ -303,6 +308,7 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
   datetime_t report_time;
   float rain_1h = 0;
   float mslp = 0;
+  float battery_voltage;
 
   // Add up the rainHour array for the hourly rain total
 
@@ -375,6 +381,9 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
   printf("Temp. = %.2fC\n", temperature / 100.0);
 #endif
 
+  battery_voltage = (( battery_level * BATTERY_ADC_FACTOR) - BATTERY_ADC_OFFSET ) * BATTERY_ADC_SCALE;
+  
+  
   rtc_get_datetime(&report_time);
 
   // format the output message
@@ -395,7 +404,8 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
                               gust10max,
                               rainToday,
                               rain_1h,
-                              rainSinceLast);
+                              rainSinceLast,
+                              battery_voltage);
 
   // next station message to rak11 format
 

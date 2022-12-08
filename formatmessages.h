@@ -34,7 +34,8 @@ weatherReport format_weather_report (
 					  wind wind10mmax,
 					  float raintoday,
 					  float rain1h,
-					  float rainsincelast);
+					  float rainsincelast,
+					  float battery_voltage);
 
 stationReport format_station_report ();
 

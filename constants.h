@@ -6,6 +6,8 @@
 #define RAIN_IRQ 3  // GPIO pin 3 = pin 5 on board
 #define WIND_DIR 0  // ADC0 = Pin 31 GPIO pin 26 (below)
 #define WIND_DIR_GP 26
+#define BATTERY_LEVEL 1 // ADC1 = pin 32 GPIO 27
+#define BATTERY_LEVEL_GP 27 
 
 #define HARDWARE_ID_LENGTH 17 // or PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1 byte
 
@@ -22,7 +24,6 @@
 
 #define CORE0_LED 14
 #define RX_LED 15
-#define BOOT_LED 15
 #define TX_LED 13
 #define BOOT_LED_FLASH 1000000 // How long to flash the boot LED
 #define LED_FLASH 250 // how brief is the flash 1000000 = 1s
@@ -78,5 +79,12 @@
 #define BASELINE_TIME 1640995200 // 2022-01-01 00:00:00 GMT
 
 #define BASELINE_PRESSURE 90000 // This is in millibars with two implied decimals
+
+#define BASELINE_TEMPERATURE 50.00 // Added to temperatures to avoid -ve's
+
+#define BATTERY_ADC_FACTOR ( 6.6f / (1 << 12) ) // Assumes 3.3v reference plus a 50% voltage splitter
+                                                                   
+#define BATTERY_ADC_SCALE 1.1 // The -0.2 (offset) and 1.1 (multiplier) are from on-board callibration
+#define BATTERY_ADC_OFFSET 0.2
 
 #endif

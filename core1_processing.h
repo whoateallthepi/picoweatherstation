@@ -6,7 +6,8 @@ void core1_process (void);
 void gpio_callback(uint gpio, uint32_t events);
 void get_wind_readings (void);
 float get_wind_direction();
-int get_sector (uint16_t adc);
+int get_sector(uint16_t adc);
+uint16_t get_voltage(void);
 
 static inline uint64_t raw_time_64(void);
 //bool repeating_timer_callback_1s(struct repeating_timer *t); //every second
@@ -27,3 +28,5 @@ extern wind volatile current_wind; // defined in openaws
 extern int32_t temperature;
 extern uint32_t pressure;
 extern uint32_t humidity; 
+
+extern volatile uint16_t battery_level;

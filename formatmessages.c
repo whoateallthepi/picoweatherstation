@@ -101,7 +101,8 @@ weatherReport format_weather_report (
 					  wind wind10mmax,
 					  float raintoday,
 					  float rain1h,
-					  float rainsincelast) {
+					  float rainsincelast,
+                      float battery_voltage) {
     // all number parameters are floats now to force consistent 
     //decimal place handling. All reports are now in ints to compress 
     //the message. Decimal point logic is decoded in the client
@@ -109,8 +110,11 @@ weatherReport format_weather_report (
     weatherReport wr;
     wr.header = format_message_header();
  
-    format_int16(wr.temperature, float_to_int((temperature/100), DEFAULT_DECIMAL_PLACES));
     // For some reason temp is in hundredth of a degree
+    float t = (temperature /100 ) + BASELINE_TEMPERATURE;
+
+    format_int16(wr.temperature, float_to_int((t), DEFAULT_DECIMAL_PLACES));
+    
     format_int16(wr.humidity, float_to_int((humidity/1000), DEFAULT_DECIMAL_PLACES));
     //humidity is not %, for some reason
     
@@ -135,7 +139,7 @@ weatherReport format_weather_report (
     format_int16(wr.rain_today, float_to_int(raintoday, DEFAULT_DECIMAL_PLACES));
     format_int16(wr.rain_1h, float_to_int(rain1h, DEFAULT_DECIMAL_PLACES));
     format_int16(wr.rain_since_last, float_to_int(rainsincelast, DEFAULT_DECIMAL_PLACES));
-    
+    format_int16(wr.battery_voltage, float_to_int(battery_voltage, DEFAULT_DECIMAL_PLACES));
     wr.eos = '\0'; // Set up end of string to make it easier to use string functions later
     
     return wr;

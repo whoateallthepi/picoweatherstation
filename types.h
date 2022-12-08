@@ -65,7 +65,8 @@ typedef struct {
     char rain_today [4]; 
     char rain_since_last [4];
     char bar_uncorrected [4]; // Pressure from BASELINE_PRESSURE
-    char bar_corrected [4];  // Pressure from BASELINE_PRESSURE
+    char bar_corrected [4]; 
+    char battery_voltage [4]; // Only needs 3 char but modem needs whole chars
     char eos; } weatherReport;    // end of string char
 
 typedef struct {
