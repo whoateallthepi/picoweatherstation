@@ -26,6 +26,8 @@ const char *SET_APP_KEY = "at+set_config=lora:app_key:%s";
 const char *RESTART = "at+set_config=device:restart\r\n";
 const char *SEND_LORAWAN = "at+send=lora:%d:%s%s";
 const char *JOIN = "at+join\r\n";
+const char *CHANGE_STATE = "at+set_config=device:sleep:%i\r\n";
+
 
 // Modem reponses
 const char *JOIN_SUCCESS = "OK Join Success\r\n";
@@ -34,6 +36,10 @@ const char *MODEM_ERROR = "ERROR: ";
 const char *MODEM_OK = "OK \r\n";
 
 const char *RAK811_RECVD = "at+recv="; // This is the start of a data message
+
+const char *SLEEP_SUCCESS = "OK Sleep\r\n";
+const char *WAKE_SUCCESS = "OK Wake Up\r\n";
+
 
 char RAK811_DATA_END[] = {0x0D, 0x0A, 0x00}; // This is how a RAK811
                                              // incoming data message ends
@@ -56,7 +62,8 @@ int rak811_lorawan_initialise(void)
   uart_set_fifo_enabled(UART_ID, true);
 
   // The first few UART responses often have 'garbage' characters (possiply from the Pico) so doing
-  // a version call here and ignoring the result usually syncs things up.
+  // a version call here and ignoring the result usually syncs things up. 
+  // Also if the modem is in sleep, this will wake it up
 
   rak811_command(VERSION, response_buffer, RAK811_COMMAND_BUFFER_SIZE, RAK811_COMMAND_WAIT_MS);
 
@@ -112,6 +119,23 @@ int rak811_lorawan_join(void)
   }
 
   return join_response; // Zero = success
+}
+
+int rak811_change_state(int state) {
+  /* Wake or sleeps the modem. 
+   * state = 1 = sleep
+   * state = 0 = wake
+   * Any other parameter will give a, possibly untrapped, error
+   * 
+  */
+  char command_buffer[RAK811_COMMAND_BUFFER_SIZE];
+  char response_buffer[RAK811_COMMAND_BUFFER_SIZE];
+  int state_response = 0;
+  
+  snprintf(command_buffer, RAK811_COMMAND_BUFFER_SIZE, CHANGE_STATE, state);
+
+  state_response = rak811_command(command_buffer, response_buffer, RAK811_COMMAND_BUFFER_SIZE,RAK811_COMMAND_WAIT_MS);
+  return state_response;
 }
 
 int rak811_command(const char *command, char *response, int response_size, int wait_ms)
@@ -200,6 +224,20 @@ int rak811_command(const char *command, char *response, int response_size, int w
       return 0;
     }
 
+    // Check for success from a sleep command - OK Sleep or OK Wake
+    if (strncmp(command_response, SLEEP_SUCCESS, strlen(SLEEP_SUCCESS)) == 0)
+    {
+      strncpy(response, command_response, response_size);
+      return 0;
+    }
+
+    if (strncmp(command_response, WAKE_SUCCESS, strlen(WAKE_SUCCESS)) == 0)
+    {
+      strncpy(response, command_response, response_size);
+      return 0;
+    }
+
+
     // This looks like an incoming message - check "OK \r\nat+recv=0,-18,5,0
 
     if (strncmp(command_response, INCOMING_DATA, strlen(INCOMING_DATA)) != 0)
@@ -233,7 +271,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
 
 int rak811_read_response(char *data, uint data_size)
 {
-  /* Utility to read response form the RAK811 modem
+  /* Utility to read response from the RAK811 modem
    *
    * If response is OK - returns 0, If ERROR returns error code, otherwise
    * returns -1 and the text in data as a null-terminated string.

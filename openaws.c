@@ -170,6 +170,9 @@ int main(void)
     rak811_lorawan_join();
   }
    
+   // sleep the modem to save power. Not checking error as there is litte we can do
+   
+   rak811_change_state(SLEEP);
 
   // Pressure, temp and humidity sensor
 
@@ -293,7 +296,12 @@ void report_station (void)
 
   // next station message to rak11 format
 
+  rak811_change_state(WAKE);
+
   rak811_lorawan_put_hex((char *)&sr, sizeof(stationReport), 101); // treat the structure as bytes
+  
+  rak811_change_state(SLEEP);
+
 }
 
 void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
@@ -411,8 +419,11 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
 
   rainSinceLast = 0; // rain since last report (deprecated)
 
+  rak811_change_state(WAKE);
+
   rak811_lorawan_put_hex((char *)&sm, sizeof(weatherReport), 100); // treat the structure as bytes
   
+  rak811_change_state(SLEEP);
 }
 
 wind calc_average_wind(volatile const wind readings[], uint entries)

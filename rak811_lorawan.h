@@ -16,10 +16,14 @@
 
 #define RAK811_COMMAND_BUFFER_SIZE 60
 
+#define SLEEP 1 // Values for modem power control
+#define WAKE 0 
+
 // prototypes
 
 int rak811_lorawan_initialise(void);
 int rak811_lorawan_join(void);
+int rak811_change_state(int state);
 int rak811_command(const char *command, char *response, int response_size, int wait_ms);
 int rak811_read_response(char *data, uint data_size);
 void rak811_lorawan_put_hex(char *data, int length, int port);
