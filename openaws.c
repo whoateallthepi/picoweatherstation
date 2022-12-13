@@ -104,6 +104,8 @@ volatile wind max_gust = {.speed = 0, .direction = 0}; // daily max
 
 volatile wind current_wind = {.speed = 0, .direction = 0}; // latest
 
+volatile wind current_wind_5s = {.speed = 0, .direction = 0}; // latest 5s average
+
 volatile uint16_t battery_level; // updated via ADC in core1
 
 // =========================== main ====================================
@@ -406,7 +408,7 @@ void report_weather(int32_t humidity, int32_t pressure, int32_t temperature)
                               humidity,
                               pressure,
                               mslp,
-                              current_wind,
+                              current_wind_5s, // Smooth out wind readings a little
                               max_gust,
                               averages2m,
                               gust10max,

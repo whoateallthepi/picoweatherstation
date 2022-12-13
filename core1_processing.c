@@ -25,7 +25,7 @@ uint64_t lastRainIRQ = 0;     // Used for primitive debouncing
 
 //The following index the wind/rain arrays used in the interrupts
 char minutes = 0;    // index for minute array rain data (used in IRQs)
-char seconds_2m = 0; // These two#include "hardware/gpio.h" are indexes to the arrays
+char seconds_2m = 0; // These two are indexes to the arrays
 char seconds = 0;
 char minutes_10m = 0;
 
@@ -121,6 +121,20 @@ void second_processing()
 
   windspeed[seconds_2m].speed = current_wind.speed;
   windspeed[seconds_2m].direction = current_wind.direction;
+
+  int seconds_av = seconds_2m;
+  float sum_speeds = 0;
+  for ( int x = 0; x < 5; ++x)
+  {
+    if (seconds_av < 0) seconds_av += 120;
+    sum_speeds += windspeed[seconds_av].speed; 
+    seconds_av--;
+  }
+
+  current_wind_5s.speed = sum_speeds / 5;
+  // At moment not calculatng average direction -
+  // seems fairly meaningless over 5s
+  current_wind_5s.direction = current_wind.direction;
 
   // check the gust for the minute
   if (current_wind.speed > gust10m[minutes_10m].speed)

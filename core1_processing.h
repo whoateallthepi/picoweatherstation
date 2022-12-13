@@ -21,6 +21,7 @@ extern volatile wind windspeed[120]; // 2 minute record of wind speed /dir
 extern volatile wind gust10m[10]; // Fastest gust in past 10 minutes 
 extern volatile wind max_gust; // daily max
 extern wind volatile current_wind; // defined in openaws
+extern wind volatile current_wind_5s; 
 
 // These three are continuously updated (10s) by core1_processing
 // Initilaised and declared in openaws.c

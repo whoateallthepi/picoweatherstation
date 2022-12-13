@@ -208,7 +208,7 @@ int rak811_command(const char *command, char *response, int response_size, int w
 
   if (strncmp(command_response, "OK", 2) == 0)
   {
-    /* So far so good, we are working as a Class A lorawan device, so we may get and OK from the modem, 
+    /* So far so good, we are workrak811_change_state(WAKE);ing as a Class A lorawan device, so we may get and OK from the modem, 
      * plus an incoming message eg "OK \r\nat+recv=0,-18,5,0\r\n" o check for this
     */
     if (strlen(command_response) < 6)
