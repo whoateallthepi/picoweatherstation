@@ -111,7 +111,7 @@ Note this is a Class A loraWAN device. Incoming messages (downlinks, in loraWAN 
 | 100            | x64 | Contains the latest weather readings | Uplink weather station > loraWAN |
 | 101            | x65 | Details of station including date, time, altitude and position | Uplink |
 | .. |
-| 200            | xc8 | Set time zone - sends the current base station timezone to weather station | Downlink loraWAN > weather station |
+| 200            | xc8 | Set time zone - sends the current base station timezone to weather station, plus a seconds adjustment for the station clock (-127s to +127s)| Downlink loraWAN > weather station |
 | 201            | xc9 | Set station details - sends the station details - altitude, position - to the weather tation |  Downlink |
 | 202            | xca | Request station details - sends a request for the weather station to send a message 101 |  Downlink |
 | 203            | xcb | Request softwarre reset - asks the station to do a software reset (via watchdog) |  Downlink |
