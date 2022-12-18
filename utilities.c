@@ -141,6 +141,16 @@ int hex2int(char *hex)
     return value;
 }
 
+int hex2int2sComplement(char *hex)
+{
+    // takes 2 hex digits and convert to an int
+    int value = 0;
+    value = getNum(*hex);
+    value <<= 4;
+    value += getNum(*(hex + 1));
+    if (value > 127) return (value - 256); else return value; 
+}
+
 int getNum(char ch)
 {
     // get the numeric value of a hex byte
@@ -183,6 +193,18 @@ int getNum(char ch)
     }
     return num;
 }
+
+
+int int2BCD(int x) {
+    int a,b;
+    a = x / 10; // gives us first BCD nibble 
+    b = x % 10; // other nibble
+    return ( (16 * a) + b);
+}
+
+
+
+
 void setup_led(uint led)
 {
     gpio_init(led);

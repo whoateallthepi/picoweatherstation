@@ -11,5 +11,6 @@
 
 
 datetime_t ds3231ReadTime();
+void ds3231SetTime(datetime_t t); 
 
 #endif

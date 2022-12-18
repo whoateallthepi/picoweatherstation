@@ -18,17 +18,36 @@ void set_timezone(incomingMessage *data)
 {
 
     /* Message will look like: 
-     * ff\r\n
-     * ^    ^            
-     * timezone (here -1) 
+     * fffa\r\n
+     * ^  ^            
+     * timezone seconds correction
+     * (here -1) (here -6)
      * 
      * timezone is currently hours only - review
      * 
      */
+  stationdata.timezone = hex2int2sComplement(data->incomingdata.timemessage.timezone);
 
-  stationdata.timezone = hex2int(data->incomingdata.timemessage.timezone);
+  /* Deal with the seconds correction 
+   *
+   */ 
+  int seconds_offset = hex2int2sComplement(data->incomingdata.timemessage.seconds_offset);
+  if ( seconds_offset != 0)
+  {
+    datetime_t t0, t1;
+    time_t t0_s, t1_s;
 
-  //if a clock is connected - update the pico board clock
+    t0 = ds3231ReadTime();
+    t0_s = rtc_to_epoch(t0, 0); // rtc now always runs UTC
+    t1_s = t0_s + seconds_offset;
+
+    epoch_to_rtc(t1_s, &t1);
+
+    ds3231SetTime(t1);
+
+  }
+
+  //if an external clock is connected - update the pico board clock
 
   #ifdef DS3231
   datetime_t t = ds3231ReadTime();

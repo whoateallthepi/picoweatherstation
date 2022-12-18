@@ -19,6 +19,8 @@ int getNum(char ch);
 int32_t hex2int32 (char * hex);
 int16_t hex2int16 (char * hex);
 int hex2int(char * hex);
+int hex2int2sComplement(char *hex);
+int int2BCD(int x);
 
 void setup_led(uint led);
 void led_on(uint led);

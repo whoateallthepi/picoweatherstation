@@ -79,7 +79,8 @@ typedef struct {
 // ==================== incoming mesages =========================
 
 typedef struct {
-    char timezone [1]; } timeMessage200;
+    char timezone [2];
+    char seconds_offset [2];} timeMessage200;
     
 typedef struct {
     char latitude [8];

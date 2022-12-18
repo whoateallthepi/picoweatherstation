@@ -4,6 +4,8 @@
 
 #include "ds3231.h"
 
+#include "utilities.h" // for int2BCD
+
 #define BCD_TO_INT(x) (x - (6 * (x >> 4)))
 
 datetime_t ds3231ReadTime()
@@ -33,5 +35,52 @@ datetime_t ds3231ReadTime()
                                   .sec = BCD_TO_INT(buf[0])};
 
     return ds3231_datetime;
+    
+}
+
+void ds3231SetTime(datetime_t t) 
+// Set the clock from a datetime_t object
+{
+    uint8_t val = 0x00;
+    uint8_t addr = 0x68;
+    //char  buf[]={0x00,0x50,0x59,0x17,0x04,0x05,0x03,0x21};
+    //char  *week[]={"SUN","Mon","Tues","Wed","Thur","Fri","Sat"};
+    
+	char buf[2];
+	//set second
+	buf[0]=0x00;
+	buf[1]=int2BCD(t.sec); 
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	
+    //set minute
+	buf[0]=0x01;
+	buf[1]=int2BCD(t.min);
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	
+    //set hour
+	buf[0]=0x02;
+	buf[1]=int2BCD(t.hour);
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	
+    //set weekday
+	buf[0]=0x03;
+	buf[1]=int2BCD(t.dotw + 1);
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	
+    //set day
+	buf[0]=0x04;
+	buf[1]=int2BCD(t.day);
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	
+    //set month
+	buf[0]=0x05;
+	buf[1]=int2BCD(t.month);
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	
+    //set year
+	buf[0]=0x06;
+	buf[1]=int2BCD(t.year - 2000); // beware year 3000 bug
+	i2c_write_blocking(I2C_PORT,addr,buf,2,false);
+	return;
     
 }

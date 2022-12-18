@@ -20,7 +20,7 @@ messageHeaderOut format_message_header (void) {
     datetime_t current_time;
     rtc_get_datetime(&current_time);
     
-    time_t ts = rtc_to_epoch(current_time, stationdata.timezone);
+    time_t ts = rtc_to_epoch(current_time, 0); // rtc now always runs UTC
 
     ts -= BASELINE_TIME;
     
